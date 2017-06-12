@@ -1,0 +1,10 @@
+.metadata
+.recommenders
+*/.settings
+*/.classpath
+*/.project
+*.csv
+nets
+neuroph
+
+
