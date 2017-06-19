@@ -77,7 +77,7 @@ public class UnitNeuralImpl implements Unit {
 		currentState.nav = this.netAssetValue(etfValueMap);
 		currentState.iteration=it;
 		currentState.cycle=cycle;
-		currentState.preference = Arrays.copyOf(preference, preference.length);
+		//scurrentState.buyPreference = Arrays.copyOf(preference, preference.length);
 		currentState.etfs=Collections.unmodifiableMap(this.etfs);
 		
 		//this.stateList.add(currentState);

@@ -65,7 +65,8 @@ public class Main {
 			Files.createDirectories(Paths.get(dir.toString()+"\\"+currencyDirectory));
 			
 			if(Files.exists(dataFile)){
-				Files.delete(dataFile);
+				//Files.delete(dataFile);
+				continue;
 			}
 			
 			

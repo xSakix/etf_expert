@@ -1,5 +1,6 @@
 package org.eft.evol.stats;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.eft.evol.model.ETFMap;
@@ -11,7 +12,9 @@ public class UnitState {
 	public int iteration;
 	public int cycle;
 	public float[] character;
-	public float[] preference;
+	public Map<Integer,Float> buyPreference;
+	public Map<Integer,Float> sellPreference;
+	public Map<Integer,Float> holdPreference;
 	public float nav;	
 	public Map<Integer, Long> etfs;
 	
@@ -25,8 +28,16 @@ public class UnitState {
 		builder.append(",");
 		builder.append(Arrays.toString(character));
 		builder.append(",{");
-		for(int i = 0; i < preference.length;i++){
-			builder.append(ETFMap.getInstance().getEtfName(i)+"="+preference[i]+",");
+		for(Integer key : buyPreference.keySet()){
+			builder.append(ETFMap.getInstance().getEtfName(key)+"="+buyPreference.get(key)+",");
+		}
+		builder.append("},{");
+		for(Integer key : sellPreference.keySet()){
+			builder.append(ETFMap.getInstance().getEtfName(key)+"="+sellPreference.get(key)+",");
+		}
+		builder.append("},{");
+		for(Integer key : holdPreference.keySet()){
+			builder.append(ETFMap.getInstance().getEtfName(key)+"="+holdPreference.get(key)+",");
 		}
 		builder.append("},{");
 		for(Integer key : etfs.keySet()){

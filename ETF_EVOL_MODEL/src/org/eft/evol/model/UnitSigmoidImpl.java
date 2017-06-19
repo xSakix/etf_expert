@@ -21,7 +21,7 @@ public class UnitSigmoidImpl extends AbstractUnit implements Unit {
 		super(ETF_SIZE, index);
 	}
 
-	public UnitSigmoidImpl(int index, float[] character, float[] preference) {
+	public UnitSigmoidImpl(int index, float[] character, Map<Integer,Float> preference) {
 		super(index, character, preference);
 	}
 
@@ -39,7 +39,7 @@ public class UnitSigmoidImpl extends AbstractUnit implements Unit {
 		}
 
 		for (Integer index : indexes) {
-			float result = (float) index * sigmoid(100 * preference[index - 1]);
+			float result = (float) index * sigmoid(100 * buyPreference.get(index-1));
 			if (Math.abs(((float) index) - result) < ERROR_TOLERANCE && etfValueMapKeySet.contains(index - 1)) {
 				return index - 1;
 			}
@@ -90,9 +90,8 @@ public class UnitSigmoidImpl extends AbstractUnit implements Unit {
 
 		etfs.put(index, shares);
 
-		if (preference[index] + MODIFIER <= 1.0d)
-			preference[index] += MODIFIER;
-
+		incrementPreference(index,buyPreference);
+		
 		UnitAction buyAction = new UnitAction();
 
 		buyAction.actionType = ActionType.BUY;
@@ -134,8 +133,8 @@ public class UnitSigmoidImpl extends AbstractUnit implements Unit {
 	}
 
 	private boolean doSellAction(int iteration, int cycle, List<Map<Integer, Float>> etfValueMap, int index, float nav) {
-		if (preference[index] - MODIFIER > 0.0d)
-			preference[index] -= MODIFIER;
+//		if (preference[index] - MODIFIER > 0.0d)
+//			preference[index] -= MODIFIER;
 
 		long shares = etfs.get(index);
 		shares = Uniform.staticNextLongFromTo(1l, shares);
@@ -165,29 +164,10 @@ public class UnitSigmoidImpl extends AbstractUnit implements Unit {
 	@Override
 	public Unit crossOver(Unit other) {
 
-		int crossIndexCharacter = Uniform.staticNextIntFromTo(0, this.character.length - 1);
-		int crossIndexPreference = Uniform.staticNextIntFromTo(0, this.preference.length - 1);
 
-		float[] nCharacter = new float[this.character.length];
-		float[] nPreference = new float[this.preference.length];
+		float[] nCharacter = crossOverCharacter(other);
 
-		float[] otherCharacter = other.getCharacter();
-		for (int i = 0; i < this.character.length; i++) {
-			if (i <= crossIndexCharacter) {
-				nCharacter[i] = this.character[i];
-			} else {
-				nCharacter[i] = otherCharacter[i];
-			}
-		}
-
-		float[] otherPreference = other.getPreferences();
-		for (int i = 0; i < this.preference.length; i++) {
-			if (i <= crossIndexPreference) {
-				nPreference[i] = this.preference[i];
-			} else {
-				nPreference[i] = otherPreference[i];
-			}
-		}
+		Map<Integer, Float> nPreference = crossoverPreference(other,buyPreference,ActionType.BUY);
 
 		return new UnitSigmoidImpl(UnitSequenceGenerator.getID(), nCharacter, nPreference);
 	}

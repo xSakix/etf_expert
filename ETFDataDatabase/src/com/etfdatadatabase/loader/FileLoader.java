@@ -87,10 +87,10 @@ public class FileLoader {
 		
 		
 		//zoberiem natvrdo len rok dozadu
-//		Calendar calFrom = Calendar.getInstance();
-//		calFrom.set(Calendar.YEAR, 2013);
-//		calFrom.set(Calendar.MONTH, 0);
-//		calFrom.set(Calendar.DAY_OF_MONTH,1);
+		Calendar calFrom = Calendar.getInstance();
+		calFrom.set(Calendar.YEAR, 2000);
+		calFrom.set(Calendar.MONTH, 0);
+		calFrom.set(Calendar.DAY_OF_MONTH,1);
 
 		/*Calendar calTo = Calendar.getInstance();
 		calTo.set(Calendar.YEAR, 2016);
@@ -104,9 +104,9 @@ public class FileLoader {
 				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 				LocalDate dateTime = LocalDate.parse(parts[0], formatter);
 				Date datePart = Date.from(dateTime.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-				//if(datePart.after(calFrom.getTime()) /*&& datePart.before(calTo.getTime())*/){
+				if(datePart.after(calFrom.getTime()) /*&& datePart.before(calTo.getTime())*/){
 					etf.addNavData(Float.valueOf(parts[1]), datePart);
-				//}
+				}
 			}
 		});
 		

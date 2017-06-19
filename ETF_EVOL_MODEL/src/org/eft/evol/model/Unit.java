@@ -41,7 +41,9 @@ public interface Unit {
 	public void mutate();
 	
 	float[] getCharacter();
-	float[] getPreferences();
+	Map<Integer,Float> getBuyPreferenceMap();
+	Map<Integer,Float> getSellPreferenceMap();
+	Map<Integer,Float> getHoldPreferenceMap();
 	
 	float getInvesment();
 }

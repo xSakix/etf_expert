@@ -22,7 +22,9 @@ public abstract class AbstractUnit implements Unit {
 	protected static final float MODIFIER = 0.01f;
 
 	float[] character;
-	float[] preference;
+	Map<Integer,Float> buyPreference = new HashMap<>();
+	Map<Integer,Float> sellPreference = new HashMap<>();
+	Map<Integer,Float> holdPreference = new HashMap<>();
 	int ID = 0;
 	float cash = BASE_CASH;
 	float investment = cash;
@@ -38,15 +40,14 @@ public abstract class AbstractUnit implements Unit {
 
 	public AbstractUnit(int ETF_SIZE, int index) {
 		this.character = new float[3];
-		this.preference = new float[ETF_SIZE];
 		this.ID = index;
 		init();
 		initState();
 	}
 
-	public AbstractUnit(int index, float[] character, float[] preference) {
+	public AbstractUnit(int index, float[] character, Map<Integer,Float> preference) {
 		this.character = Arrays.copyOf(character, character.length);
-		this.preference = Arrays.copyOf(preference, preference.length);
+		this.buyPreference = new HashMap<>(preference);
 		this.ID = index;
 		initState();
 	}
@@ -54,11 +55,6 @@ public abstract class AbstractUnit implements Unit {
 	private void init() {
 		for (int i = 0; i < 3; i++) {
 			character[i] = Uniform.staticNextFloatFromTo(0.0f, 1.0f);
-		}
-		for (int i = 0; i < preference.length; i++) {
-			//preference[i] = Uniform.staticNextFloatFromTo(0.0f, 0.5f);
-			preference[i] = 0.5f;
-			// character[i] = 0.5d;
 		}
 
 	}
@@ -69,7 +65,9 @@ public abstract class AbstractUnit implements Unit {
 		currentState.iteration = 0;
 		currentState.cycle = 0;
 		currentState.character = Arrays.copyOf(character, character.length);
-		currentState.preference = Arrays.copyOf(preference, preference.length);
+		currentState.buyPreference = new HashMap<>(buyPreference);
+		currentState.sellPreference = new HashMap<>(sellPreference);
+		currentState.holdPreference = new HashMap<>(holdPreference);
 		currentState.etfs = new HashMap(this.etfs);
 	}
 	
@@ -83,7 +81,9 @@ public abstract class AbstractUnit implements Unit {
 		currentState.iteration = it;
 		currentState.cycle = cycle;
 		currentState.character = Arrays.copyOf(character, character.length);
-		currentState.preference = Arrays.copyOf(preference, preference.length);
+		currentState.buyPreference = new HashMap<>(buyPreference);
+		currentState.sellPreference = new HashMap<>(sellPreference);
+		currentState.holdPreference = new HashMap<>(holdPreference);
 		currentState.etfs = new HashMap(this.etfs);
 
 		// this.stateList.add(currentState);
@@ -107,6 +107,12 @@ public abstract class AbstractUnit implements Unit {
 		addGradientToAction(cycle, etfValueMap, holdAction);
 
 		actions.add(holdAction);
+		
+		for(Integer key : holdPreference.keySet()){
+			if(etfs.containsKey(key) && holdPreference.get(key)+MODIFIER < 1.0f){
+				holdPreference.put(key, holdPreference.get(key)+MODIFIER);
+			}
+		}
 	}
 
 	@Override
@@ -154,7 +160,13 @@ public abstract class AbstractUnit implements Unit {
 
 	@Override
 	public String toString() {
-		return "[[" + ID + "]," + Arrays.toString(character) + "," + Arrays.toString(preference) + ",[" + cash + "],"
+		
+		StringBuilder builder = new StringBuilder();
+		for(Integer key : buyPreference.keySet()){
+			builder.append(ETFMap.getInstance().getEtfName(key)+"="+buyPreference.get(key)+",");
+		}
+		
+		return "[[" + ID + "]," + Arrays.toString(character) + "," + builder.toString() + ",[" + cash + "],"
 				+ etfs.toString() + "]";
 	}
 
@@ -287,8 +299,18 @@ public abstract class AbstractUnit implements Unit {
 	}
 
 	@Override
-	public float[] getPreferences() {
-		return Arrays.copyOf(this.preference, this.preference.length);
+	public Map<Integer,Float> getBuyPreferenceMap() {
+		return this.buyPreference;
+	}
+	
+	@Override
+	public Map<Integer,Float> getSellPreferenceMap(){
+		return this.sellPreference;
+	}
+	
+	@Override
+	public Map<Integer,Float> getHoldPreferenceMap(){
+		return this.holdPreference;
 	}
 
 	@Override
@@ -358,5 +380,85 @@ public abstract class AbstractUnit implements Unit {
 		}
 
 	}
+	
+	protected float getBuyPreference(int index) {
+		float prob = 0.5f;
+		if(buyPreference.containsKey(index)){
+			prob = buyPreference.get(index);
+		}else{
+			buyPreference.put(index, prob);			
+		}
+		return prob;
+	}
 
+	protected float getSellPreference(int index) {
+		float prob = 0.5f;
+		if(sellPreference.containsKey(index)){
+			prob = sellPreference.get(index);
+		}else{
+			sellPreference.put(index, prob);			
+		}
+		return prob;
+	}
+	
+	protected float getHoldPreference(int index) {
+		float prob = 0.1f;
+		if(holdPreference.containsKey(index)){
+			prob = holdPreference.get(index);
+		}else{
+			holdPreference.put(index, prob);			
+		}
+		return prob;
+	}
+
+	protected float[] crossOverCharacter(Unit other) {
+		int crossIndexCharacter = Uniform.staticNextIntFromTo(0, this.character.length-1);
+
+		float[] nCharacter = new float[this.character.length];
+
+		float[] otherCharacter = other.getCharacter();
+		for(int i = 0;i < this.character.length;i++){
+			if(i <= crossIndexCharacter){
+				nCharacter[i] = this.character[i]; 
+			}else{
+				nCharacter[i] = otherCharacter[i];
+			}
+		}
+		return nCharacter;
+	}
+	
+	protected Map<Integer, Float> crossoverPreference(Unit other, Map<Integer,Float> preferenceMap,int actionType) {
+		Map<Integer,Float> nPreference = new HashMap<>(preferenceMap);
+		Map<Integer,Float> otherMap = getOtherMap(other,actionType);
+		for(Integer key : otherMap.keySet()){
+			if(nPreference.containsKey(key)){
+				nPreference.put(key, (nPreference.get(key)+otherMap.get(key))/2.0f);
+			}else{
+				nPreference.put(key, otherMap.get(key));
+			}
+			
+		}
+		return nPreference;
+	}
+	
+	private Map<Integer, Float> getOtherMap(Unit other, int actionType) {
+		if(actionType == ActionType.BUY){
+			return buyPreference;
+		}
+		if(actionType == ActionType.SELL){
+			return sellPreference;
+		}
+		if(actionType == ActionType.HOLD){
+			return holdPreference;
+		}
+		
+		return new HashMap<>();
+	}
+
+	protected void incrementPreference(int index, Map<Integer,Float> map) {
+		if(map.get(index) + MODIFIER <= 1.0f){
+			map.put(index, map.get(index) +MODIFIER);
+		}
+	}
+	
 }

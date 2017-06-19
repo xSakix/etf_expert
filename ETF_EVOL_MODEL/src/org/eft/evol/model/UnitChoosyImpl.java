@@ -1,5 +1,6 @@
 package org.eft.evol.model;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,8 +17,10 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 		super(ETF_SIZE,index);
 	}
 	
-	public UnitChoosyImpl(int index, float[] character, float[] preference) {
+	public UnitChoosyImpl(int index, float[] character, Map<Integer,Float> preference, Map<Integer,Float> sellPreference, Map<Integer,Float> holdPreference) {
 		super(index,character,preference);
+		this.sellPreference = sellPreference;
+		this.holdPreference = holdPreference;
 	}
 
 	@Override
@@ -30,7 +33,9 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 		int index = keySet.toArray(new Integer[] {})[Uniform.staticNextIntFromTo(0, keySet.size()-1)];
 		float nav=valueMap.get(index);
 		
-		float prob = preference[index];
+		float prob = getBuyPreference(index);
+		getHoldPreference(index);
+		
 		float choice = Uniform.staticNextFloatFromTo(0.0f, 1.0f);
 		if (prob >= choice) {
 			return doBuyAction(iteration, cycle, etfValueMap, index, nav);			
@@ -63,9 +68,8 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 		}
 
 		etfs.put(index, shares);
-		
-		if(preference[index] + MODIFIER <= 1.0f)
-			preference[index] += MODIFIER;
+
+		incrementPreference(index,buyPreference);
 
 		UnitAction buyAction = new UnitAction();
 		
@@ -85,6 +89,8 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 		return false;
 	}
 
+	
+
 	@Override
 	public boolean sell(int iteration, int cycle, List<Map<Integer, Float>> etfValueMap) {
 		
@@ -102,7 +108,8 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 		
 		float nav = etfValueMap.get(cycle).get(index);
 		
-		float prob = preference[index];
+		float prob = getSellPreference(index);
+		
 		float choice = Uniform.staticNextFloatFromTo(0.0f, 1.0f);
 
 		if (prob >= choice) {
@@ -139,39 +146,28 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 				
 		actions.add(sellAction);
 		
+		incrementPreference(index, sellPreference);
+		if(holdPreference.containsKey(index)){
+			holdPreference.put(index, holdPreference.get(index)-MODIFIER);
+		}
+		
 		return true;
 	}
 	
 	@Override
 	public Unit crossOver(Unit other){
 		
-		int crossIndexCharacter = Uniform.staticNextIntFromTo(0, this.character.length-1);
-		int crossIndexPreference = Uniform.staticNextIntFromTo(0, this.preference.length-1);
+		float[] nCharacter = crossOverCharacter(other);
 
-		float[] nCharacter = new float[this.character.length];
-		float[] nPreference = new float[this.preference.length];
-
-		float[] otherCharacter = other.getCharacter();
-		for(int i = 0;i < this.character.length;i++){
-			if(i <= crossIndexCharacter){
-				nCharacter[i] = this.character[i]; 
-			}else{
-				nCharacter[i] = otherCharacter[i];
-			}
-		}
-
-		float[] otherPreference = other.getPreferences();
-		for(int i = 0;i < this.preference.length;i++){
-			if(i <= crossIndexPreference){
-				nPreference[i] = this.preference[i]; 
-			}else{
-				nPreference[i] = otherPreference[i];
-			}
-		}
-
+		Map<Integer, Float> nPreference = crossoverPreference(other,buyPreference,ActionType.BUY);
+		Map<Integer, Float> nSellPreference = crossoverPreference(other,sellPreference,ActionType.SELL);
+		Map<Integer, Float> nHoldPreference = crossoverPreference(other,holdPreference,ActionType.HOLD);
 		
-		return new UnitChoosyImpl( UnitSequenceGenerator.getID(),nCharacter,nPreference);
+		return new UnitChoosyImpl( UnitSequenceGenerator.getID(),nCharacter,nPreference,nSellPreference,nHoldPreference);
 	}
+
+	
+	
 
 	@Override
 	public String toString() {

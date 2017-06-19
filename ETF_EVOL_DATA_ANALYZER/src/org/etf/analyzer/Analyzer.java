@@ -11,9 +11,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
@@ -21,6 +26,9 @@ import org.etf.provider.ConfigProvider;
 
 public class Analyzer {
 
+	private static Pattern pattern = Pattern.compile("\\{(.*?)\\}");
+
+	
 	public static void main(String[] args) throws IOException {
 		String dir = ConfigProvider.MAIN_DIR;
 		List<Path> listing = Files.list(new File(dir).toPath()).filter(Files::isDirectory).collect(Collectors.toList());
@@ -36,8 +44,7 @@ public class Analyzer {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		});
-				
+		});		
 	}
 
 	private static void analyzeOne(Path experimentDir) throws IOException {
@@ -105,33 +112,73 @@ public class Analyzer {
 	}
 
 	private static void analyzeListOfLogFiles(File analyzedData, List<Path> expData) {
-		Map<String, Float> preferenceMap = new HashMap<>();
 		Map<String, Integer> holdMap = new HashMap<>();
+		Map<Integer,Map<String, Float>> holder = new HashMap<>();
+		Map<Integer,Map<String, AtomicInteger>> counterHolder = new HashMap<>();
+		
+		holder.put(0, new HashMap<String, Float>());
+		holder.put(1, new HashMap<String, Float>());
+		holder.put(2, new HashMap<String, Float>());
 
+		counterHolder.put(0, new HashMap<String,AtomicInteger>());
+		counterHolder.put(1, new HashMap<String,AtomicInteger>());
+		counterHolder.put(2, new HashMap<String,AtomicInteger>());
+		
 		expData.forEach(p -> {
 			try {
 				String content = new String(Files.readAllBytes(p), "UTF-8");
-				String preferences = content.substring(content.indexOf("{") + 1, content.indexOf("}"));
-				String[] splitPreferenceString = preferences.split(",");
-				Arrays.asList(splitPreferenceString).forEach(preferecne -> {
-					String[] parts = preferecne.split("=");
-					Float percentage = Float.valueOf(parts[1]);
-					if (preferenceMap.containsKey(parts[0])) {
-						percentage = preferenceMap.get(parts[0])+ percentage;
+				
+				Matcher m = pattern.matcher(content);
+				
+				int i = 0;
+				while(m.find()){
+					String preferences = content.substring(m.start(),m.end()).replace("{", "").replace("}", "");
+					Map<String,Float> preferenceMap = holder.get(i);
+					Map<String,AtomicInteger> counterMap = counterHolder.get(i);
+					if(i > 2){
+						break;
 					}
-					preferenceMap.put(parts[0], percentage);
-				});
+					
+					i++;
+					
+					String[] splitPreferenceString = preferences.split(",");
+					if(StringUtils.isEmpty(preferences)) continue;
+					
+					Arrays.asList(splitPreferenceString).forEach(preferecne -> {
+						
+						String[] parts = preferecne.split("=");
+						
+						Float percentage = Float.valueOf(parts[1]);
+						String key = parts[0];
+						if (preferenceMap.containsKey(key)) {
+							percentage = preferenceMap.get(key)+ percentage;
+						}
+						preferenceMap.put(key, percentage);
+						
+						if(counterMap.containsKey(key)){
+							counterMap.get(key).incrementAndGet();
+						}else{
+							counterMap.put(key, new AtomicInteger(1));
+						}
+						
+					});
+					
+						
+				}
+				
 				
 				String hold = content.substring(content.lastIndexOf("{")+1, content.lastIndexOf("}"));
 				if(StringUtils.isNotEmpty(hold)){
 					String[] splitHold = hold.split(",");
 					Arrays.asList(splitHold).forEach(held -> {
 						String[] parts = held.split("=");
-						Integer holdVal = Integer.valueOf(parts[1]);
-						if(holdMap.containsKey(parts[0])){
-							holdVal= holdMap.get(parts[0])+holdVal;
+						String value = parts[1];
+						Integer holdVal = Integer.valueOf(value);
+						String key = parts[0];
+						if(holdMap.containsKey(key)){
+							holdVal= holdMap.get(key)+holdVal;
 						}
-						holdMap.put(parts[0], holdVal);
+						holdMap.put(key, holdVal);
 					});
 				}
 				
@@ -140,18 +187,30 @@ public class Analyzer {
 			}
 		});
 
-		preferenceMap.keySet().forEach(key->{
-			Float percentrage = preferenceMap.get(key);
-			preferenceMap.put(key, (float)(percentrage/expData.size()));
-		});
-		
-		Map<String,Float> sorted = preferenceMap.entrySet().stream()
-				.sorted(Map.Entry
-						.comparingByValue(Collections.reverseOrder()))
-				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+		Set<String> keySet = new HashSet<String>();
+		for(int i = 0;i < 3;i++){
+			final Integer index = i;
+			holder.get(index).keySet().forEach(key->{
+				Float percentrage = holder.get(index).get(key);
+				holder.get(index).put(key, (float)(percentrage/(float)counterHolder.get(index).get(key).get()));
+			});
+			keySet.addAll(holder.get(index).keySet());		
 
-		sorted.keySet().forEach(key -> {
-			String row = key + ";" + preferenceMap.get(key)+";"+(holdMap.get(key) == null ? 0 : holdMap.get(key))+"\n";
+		}
+
+		keySet.forEach(key -> {
+			String row = key + 
+						 ";" + 
+						 holder.get(0).get(key)+
+						 ";"+
+						 holder.get(1).get(key)+
+						 ";"+
+						 holder.get(2).get(key)+
+						 ";"+
+						 (holdMap.get(key) == null ? 0 : holdMap.get(key))+
+						 ";"+
+						 "http://www.etf.com/"+key+"?nopaging=1"+
+						 "\n";
 			try {
 				Files.write(analyzedData.toPath(), row.getBytes("UTF-8"),StandardOpenOption.APPEND);
 			} catch (UnsupportedEncodingException e) {
