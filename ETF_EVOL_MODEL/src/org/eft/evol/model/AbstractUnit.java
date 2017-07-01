@@ -27,7 +27,7 @@ public abstract class AbstractUnit implements Unit {
 	// protected float sumGradient = 0.0f;
 	int[] etfs;
 
-	// List<UnitAction> actions = new LinkedList<>();
+	List<UnitAction> actions = new LinkedList<>();
 
 	// List<UnitState> stateList = new ArrayList<>();
 	UnitState currentState;
@@ -56,7 +56,6 @@ public abstract class AbstractUnit implements Unit {
 		}
 
 		for (int i = 0; i < preference.length; i++) {
-			// preference[i] = (byte) Uniform.staticNextIntFromTo(50, 100);
 			preference[i] = 50;
 		}
 
@@ -103,15 +102,16 @@ public abstract class AbstractUnit implements Unit {
 
 	@Override
 	public void hold(int iteration, int cycle, float[][] etfValueMap) {
-		/*
-		 * UnitAction holdAction = new UnitAction();
-		 * 
-		 * holdAction.actionType = ActionType.HOLD; holdAction.cycle = cycle;
-		 * holdAction.iteration = iteration; addGradientToAction(cycle,
-		 * etfValueMap, holdAction);
-		 * 
-		 * actions.add(holdAction);
-		 */
+
+		UnitAction holdAction = new UnitAction();
+
+		holdAction.actionType = ActionType.HOLD;
+		holdAction.cycle = cycle;
+		holdAction.iteration = iteration;
+		addGradientToAction(cycle, etfValueMap, holdAction);
+
+		actions.add(holdAction);
+
 	}
 
 	@Override
@@ -253,11 +253,10 @@ public abstract class AbstractUnit implements Unit {
 		}
 
 		try {
-			/*
-			 * for (UnitAction action : actions) {
-			 * Files.write(actionLogFile.toPath(), action.toString().getBytes(),
-			 * StandardOpenOption.APPEND); }
-			 */
+
+			for (UnitAction action : actions) {
+				Files.write(actionLogFile.toPath(), action.toString().getBytes(), StandardOpenOption.APPEND);
+			}
 
 			Files.write(historyLogFile.toPath(), currentStateString().getBytes(), StandardOpenOption.APPEND);
 
@@ -377,10 +376,10 @@ public abstract class AbstractUnit implements Unit {
 				actionPerformed = true;
 				continue;
 			}
-			if (sellProb() >= Uniform.staticNextIntFromTo(0, 100)) {
-				actionPerformed = true;
-				sell(it, cycle, navValues);
-			}
+//			if (sellProb() >= Uniform.staticNextIntFromTo(0, 100)) {
+//				actionPerformed = true;
+//				sell(it, cycle, navValues);
+//			}
 
 			if (buyProb() >= Uniform.staticNextIntFromTo(0, 100)) {
 				actionPerformed = true;

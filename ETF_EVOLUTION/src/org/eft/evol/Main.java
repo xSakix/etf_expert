@@ -34,11 +34,12 @@ public class Main {
 	private static final float INVESTMENT = 300.0f;
 	private static final int POPULATION_SIZE = 100;
 	private static final float MUTATE = 0.1f;
-	private static final int ITER_MAX = 1000;
+	private static final int ITER_MAX = 100;
 	private static final int INVESTMENT_PERIOD = 30;
 	// private static final int REBALANCE_PERIOD = 90;
 
 	private static final File LOG = new File(ConfigProvider.DIR + "simulation.log");
+	private static final File RESULTS_CSV = new File(ConfigProvider.DIR + "results.csv");
 
 	public static void main(String[] args) throws IOException {
 
@@ -96,37 +97,15 @@ public class Main {
 	private static <T extends Unit> void experiment(int eftSize, int maxSize, float[][] navValues,
 			float[][] dividends, Class<UnitChoosyImpl> class1) {
 		List<Unit> population = new ArrayList<>(POPULATION_SIZE);
+		List<Float> results = new ArrayList<Float>();
 		if (class1 != null) {
 			for (int i = 0; i < POPULATION_SIZE; i++) {
 
 				if (UnitChoosyImpl.class.equals(class1)) {
 					population.add(new UnitChoosyImpl(eftSize, UnitSequenceGenerator.getID()));
 				}
-				// else if (UnitImpl.class.equals(klass)) {
-				// population.add(new UnitImpl(loadedETFS.size(),
-				// UnitSequenceGenerator.getID()));
-				// } else if (UnitSigmoidImpl.class.equals(klass)) {
-				// population.add(new UnitSigmoidImpl(loadedETFS.size(),
-				// UnitSequenceGenerator.getID()));
-				// }
 			}
 		} else {
-
-			// for (int i = 0; i < POPULATION_SIZE / 3; i++) {
-			// population.add(new UnitImpl(loadedETFS.size(),
-			// UnitSequenceGenerator.getID()));
-			// }
-			// for (int i = POPULATION_SIZE; i < 2 * (POPULATION_SIZE / 3); i++)
-			// {
-			// population.add(new UnitChoosyImpl(loadedETFS.size(),
-			// UnitSequenceGenerator.getID()));
-			// }
-			//
-			// for (int i = 2 * (POPULATION_SIZE / 3); i < POPULATION_SIZE; i++)
-			// {
-			// population.add(new UnitSigmoidImpl(loadedETFS.size(),
-			// UnitSequenceGenerator.getID()));
-			// }
 
 			for (int i = population.size() - 1; i < POPULATION_SIZE; i++) {
 				population.add(new UnitChoosyImpl(eftSize, UnitSequenceGenerator.getID()));
@@ -158,15 +137,17 @@ public class Main {
 			int winner_size = (int) (0.02 * POPULATION_SIZE);
 			List<Unit> winners = getWinners(cycle - 1, navValues, population, winner_size > 10 ? 10 : winner_size);
 
+			results.add(it,winners.get(0).netAssetValue(cycle-1, navValues));
+			
 			winners.parallelStream().forEach(unit -> unit.logToFile(iteration));
 
 			// simulation end condition
-			if (was90PercentReached(cycle - 1, navValues, population)) {
-				break;
-			}
-			// if(it >= ITER_MAX){
-			// break;
-			// }
+//			if (was90PercentReached(cycle - 1, navValues, population)) {
+//				break;
+//			}
+			 if(it >= ITER_MAX){
+				 break;
+			 }
 
 			// TODO: uz mam winner-a, mozno pouzit jeho??
 			crossoverPopulation(navValues, population, winners, it, cycle);
@@ -186,6 +167,35 @@ public class Main {
 		appendMessage("Simulation took: " + time + "[ms]");
 
 		printMemoryUsage(it);
+		
+		logResultsToFile(results);
+		
+	}
+
+	private static void logResultsToFile(List<Float> results) {
+		if (!Files.exists(RESULTS_CSV.toPath())) {
+			try {
+				RESULTS_CSV.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		}
+		
+		try {
+			final StringBuilder builder = new StringBuilder();
+			for(int i = 0;i < results.size();i++){
+				builder.append(i);
+				builder.append(';');
+				builder.append(results.get(i));
+				builder.append('\n');
+			}
+			Files.write(RESULTS_CSV.toPath(), builder.toString().getBytes(), StandardOpenOption.WRITE);
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 	}
 
 	private static boolean was90PercentReached(int cycle, float[][] etfValueMap, List<Unit> population) {
