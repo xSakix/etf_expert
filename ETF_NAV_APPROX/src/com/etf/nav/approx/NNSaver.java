@@ -24,90 +24,89 @@ import org.neuroph.nnet.learning.BackPropagation;
 
 public class NNSaver {
 
-	public static void saveNet(NeuralNetwork<?> nn, DataSet orig, DataSet calc, long time) throws IOException{
-				
+	public static void saveNet(NeuralNetwork<?> nn, DataSet orig, DataSet calc, long time) throws IOException {
+
 		String fileName = getFileName(nn);
-		nn.save("nets/"+fileName+".net");
-		
-		File stats = new File("nets/stats/"+fileName+".csv");
-		if(!stats.exists()){
+		nn.save("nets/" + fileName + ".net");
+
+		File stats = new File("nets/stats/" + fileName + ".csv");
+		if (!stats.exists()) {
 			stats.createNewFile();
-		}else{
+		} else {
 			stats.delete();
 			stats.createNewFile();
 		}
-		
+
 		// Create Chart
-	    XYChart chart = new XYChartBuilder().width(800).height(600).title("error").build();
+		XYChart chart = new XYChartBuilder().width(800).height(600).title("error").build();
 
-	    // Customize Chart
-	    chart.getStyler().setLegendVisible(true);
-		
+		// Customize Chart
+		chart.getStyler().setLegendVisible(true);
+
 		double sumError = 0.0d;
-		
-		List<Integer> xData = new ArrayList<Integer>();
- 	    List<Double> yData = new ArrayList<Double>();
 
- 	    int index = 0;
-		
-		for(int i = 0;i < calc.size();i++){
+		List<Integer> xData = new ArrayList<Integer>();
+		List<Double> yData = new ArrayList<Double>();
+
+		int index = 0;
+
+		for (int i = 0; i < calc.size(); i++) {
 			StringBuilder builder = new StringBuilder();
 			double origOut = orig.get(i).getDesiredOutput()[0];
 			double calcOut = calc.get(i).getDesiredOutput()[0];
-			double error = 0.5d*Math.pow(Math.abs(origOut - calcOut),2);
-			sumError+=error;
-			
-			builder.append(origOut+";");
-			builder.append(calcOut+";");
-			builder.append(String.format("%.7f",error)+"\n");
-			Files.write(stats.toPath(), builder.toString().getBytes(),StandardOpenOption.APPEND);
-			
+			double error = 0.5d * Math.pow(Math.abs(origOut - calcOut), 2);
+			sumError += error;
+
+			builder.append(origOut + ";");
+			builder.append(calcOut + ";");
+			builder.append(String.format("%.7f", error) + "\n");
+			Files.write(stats.toPath(), builder.toString().getBytes(), StandardOpenOption.APPEND);
+
 			xData.add(index++);
-			yData.add(error);			
+			yData.add(error);
 		}
 
 		XYSeries series = chart.addSeries("error", xData, yData);
-     	series.setLineColor(Color.RED);
-		
+		series.setLineColor(Color.RED);
+
 		new SwingWrapper<XYChart>(chart).displayChart();
-		
-		double avgError = sumError/((double)calc.size());
-		
-		File statsFile = new File("nets/stats/"+fileName+".stats");
-		if(!statsFile.exists()){			
+
+		double avgError = sumError / ((double) calc.size());
+
+		File statsFile = new File("nets/stats/" + fileName + ".stats");
+		if (!statsFile.exists()) {
 			statsFile.createNewFile();
 		}
 		StringBuilder builder = new StringBuilder();
-		builder.append(String.format("avgError:%.7f",avgError)+"\n");
-		builder.append("Time[s]:"+time/1000l);
+		builder.append(String.format("avgError:%.7f", avgError) + "\n");
+		builder.append("Time[s]:" + time / 1000l);
 		Files.write(statsFile.toPath(), builder.toString().getBytes(), StandardOpenOption.WRITE);
 	}
 
 	public static String getFileName(NeuralNetwork<?> nn) {
 		StringBuilder builder = new StringBuilder();
-		
-		if(nn instanceof MultiLayerPerceptron){
+
+		if (nn instanceof MultiLayerPerceptron) {
 			builder.append("MLP_SIGMOID_");
-		}else if(nn instanceof MLPReluNet){
+		} else if (nn instanceof MLPReluNet) {
 			builder.append("MLP_RELU_");
-		}else{
+		} else {
 			builder.append("NN_");
 		}
-		
-		
-		for(Layer l : nn.getLayers()){
-			builder.append(l.getNeuronsCount()+"_");
+
+		for (Layer l : nn.getLayers()) {
+			builder.append(l.getNeuronsCount() + "_");
 		}
-		String maxError = String.valueOf(((BackPropagation)nn.getLearningRule()).getMaxError()).replace(".", "");
-		builder.append(maxError +"_");
-		
-		String maxIt = String.valueOf(((BackPropagation)nn.getLearningRule()).getMaxIterations()).replace(".", "");
-		builder.append(maxIt+"_");
-		
-		String learningRate = String.valueOf(((BackPropagation)nn.getLearningRule()).getLearningRate()).replace(".", "");
-		builder.append(learningRate +"_");
-		
-		
+		String maxError = String.valueOf(((BackPropagation) nn.getLearningRule()).getMaxError()).replace(".", "");
+		builder.append(maxError + "_");
+
+		String maxIt = String.valueOf(((BackPropagation) nn.getLearningRule()).getMaxIterations()).replace(".", "");
+		builder.append(maxIt + "_");
+
+		String learningRate = String.valueOf(((BackPropagation) nn.getLearningRule()).getLearningRate()).replace(".",
+				"");
+		builder.append(learningRate + "_");
+
 		String fileName = builder.toString().substring(0, builder.toString().length());
 		return fileName;
 	}

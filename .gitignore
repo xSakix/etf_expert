@@ -4,6 +4,12 @@
 */.classpath
 */.project
 *.csv
+*.exe
+*.bin
+*.jar
+*.stackdump
+*.log
+out.txt
 nets
 neuroph
 

@@ -5,21 +5,21 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eft.evol.model.ETFMap;
 import org.eft.evol.model.Unit;
 import org.eft.evol.model.UnitChoosyImpl;
-import org.eft.evol.model.UnitImpl;
 import org.eft.evol.model.UnitSequenceGenerator;
-import org.eft.evol.model.UnitSigmoidImpl;
 import org.etf.provider.ConfigProvider;
 import org.joda.time.DateTime;
 
@@ -31,12 +31,12 @@ import cern.jet.random.Uniform;
 
 public class Main {
 
-	private static final float INVESTMENT = 100.0f;
-	private static final int POPULATION_SIZE = 5000;
+	private static final float INVESTMENT = 300.0f;
+	private static final int POPULATION_SIZE = 100;
 	private static final float MUTATE = 0.1f;
-	private static final int ITER_MAX = 100;
+	private static final int ITER_MAX = 1000;
 	private static final int INVESTMENT_PERIOD = 30;
-	//private static final int REBALANCE_PERIOD = 90;
+	// private static final int REBALANCE_PERIOD = 90;
 
 	private static final File LOG = new File(ConfigProvider.DIR + "simulation.log");
 
@@ -44,11 +44,9 @@ public class Main {
 
 		List<ETF> loadedETFS = FileLoader.loadAllUSD(0);
 
-		loadedETFS.stream().forEach(e -> System.out.println(e.getTicket()));
-
 		for (int i = 0; i < loadedETFS.size(); i++) {
 			ETF etf = loadedETFS.get(i);
-			ETFMap.getInstance().putIndex(etf.getTicket(), i);
+			ETFMap.getInstance(loadedETFS.size()).putIndex(etf.getTicket(), i);
 		}
 
 		ETF maxETFByRange = loadedETFS.stream().max(new Comparator<ETF>() {
@@ -58,6 +56,7 @@ public class Main {
 				return Integer.compare(o1.getNavDataList().size(), o2.getNavDataList().size());
 			}
 		}).get();
+
 		int maxSize = maxETFByRange.getNavDataList().size();
 		Date start = maxETFByRange.getNavDataList().get(0).getDate();
 		Date finish = maxETFByRange.getNavDataList().get(maxSize - 1).getDate();
@@ -69,103 +68,153 @@ public class Main {
 
 		appendMessage("Loaded " + loadedETFS.size() + " etfs.");
 
-		List<Map<Integer, Float>> navValues = new ArrayList<>();
+		float[][] navValues = new float[maxSize][loadedETFS.size()];
+		float[][] dividends = new float[maxSize][loadedETFS.size()];
 
 		for (int index = 0; index < maxSize; index++) {
-			navValues.add(index, getEtfValueMap(loadedETFS, index, start));
+			navValues[index] = getEtfValueMap(loadedETFS, index, start,false);
+			dividends[index] = getEtfValueMap(loadedETFS, index, start, true);
 		}
 
 		// System.out.println(Arrays.toString(loadedETFS.get(0).getNavDataList().toArray()));
+		int size = loadedETFS.size();
+		loadedETFS.clear();
+		loadedETFS = null;
 
-		experiment(loadedETFS, maxSize, navValues, UnitChoosyImpl.class);
+		experiment(size, maxSize, navValues, dividends, UnitChoosyImpl.class);
 		// experiment(loadedETFS, maxSize, navValues, UnitImpl.class);
 		// experiment(loadedETFS, maxSize, navValues, UnitSigmoidImpl.class);
 		// experiment(loadedETFS, maxSize, navValues, null);
 	}
 
-	private static <T extends Unit> void experiment(List<ETF> loadedETFS, int maxSize,
-			List<Map<Integer, Float>> navValues, Class<T> klass) {
-		List<Unit> units = new ArrayList<>();
-		if (klass != null) {
+	private static void printMemoryUsage(int iteration) {
+		System.out.println("Total used[" + iteration + "]:" + Runtime.getRuntime().totalMemory());
+		System.out.println("Free[" + iteration + "]:" + Runtime.getRuntime().freeMemory());
+		System.out.println("Max available[" + iteration + "]:" + Runtime.getRuntime().maxMemory());
+	}
+
+	private static <T extends Unit> void experiment(int eftSize, int maxSize, float[][] navValues,
+			float[][] dividends, Class<UnitChoosyImpl> class1) {
+		List<Unit> population = new ArrayList<>(POPULATION_SIZE);
+		if (class1 != null) {
 			for (int i = 0; i < POPULATION_SIZE; i++) {
 
-				if (UnitChoosyImpl.class.equals(klass)) {
-					units.add(new UnitChoosyImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
-				} else if (UnitImpl.class.equals(klass)) {
-					units.add(new UnitImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
-				} else if (UnitSigmoidImpl.class.equals(klass)) {
-					units.add(new UnitSigmoidImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
+				if (UnitChoosyImpl.class.equals(class1)) {
+					population.add(new UnitChoosyImpl(eftSize, UnitSequenceGenerator.getID()));
 				}
+				// else if (UnitImpl.class.equals(klass)) {
+				// population.add(new UnitImpl(loadedETFS.size(),
+				// UnitSequenceGenerator.getID()));
+				// } else if (UnitSigmoidImpl.class.equals(klass)) {
+				// population.add(new UnitSigmoidImpl(loadedETFS.size(),
+				// UnitSequenceGenerator.getID()));
+				// }
 			}
 		} else {
 
-			for (int i = 0; i < POPULATION_SIZE / 3; i++) {
-				units.add(new UnitImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
-			}
-			for (int i = POPULATION_SIZE; i < 2 * (POPULATION_SIZE / 3); i++) {
-				units.add(new UnitChoosyImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
-			}
+			// for (int i = 0; i < POPULATION_SIZE / 3; i++) {
+			// population.add(new UnitImpl(loadedETFS.size(),
+			// UnitSequenceGenerator.getID()));
+			// }
+			// for (int i = POPULATION_SIZE; i < 2 * (POPULATION_SIZE / 3); i++)
+			// {
+			// population.add(new UnitChoosyImpl(loadedETFS.size(),
+			// UnitSequenceGenerator.getID()));
+			// }
+			//
+			// for (int i = 2 * (POPULATION_SIZE / 3); i < POPULATION_SIZE; i++)
+			// {
+			// population.add(new UnitSigmoidImpl(loadedETFS.size(),
+			// UnitSequenceGenerator.getID()));
+			// }
 
-			for (int i = 2 * (POPULATION_SIZE / 3); i < POPULATION_SIZE; i++) {
-				units.add(new UnitSigmoidImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
-			}
-
-			for (int i = units.size() - 1; i < POPULATION_SIZE; i++) {
-				units.add(new UnitChoosyImpl(loadedETFS.size(), UnitSequenceGenerator.getID()));
+			for (int i = population.size() - 1; i < POPULATION_SIZE; i++) {
+				population.add(new UnitChoosyImpl(eftSize, UnitSequenceGenerator.getID()));
 			}
 		}
-
-		int iterationsMax = ITER_MAX;
+		// int iterationsMax = ITER_MAX;
 		int it = 0;
 		appendMessage("Evolution start: " + Calendar.getInstance().getTime());
 		long time = System.currentTimeMillis();
-		while (it < iterationsMax) {
+		// while (it < iterationsMax) {
+		int cycle = 0;
+		while (true) {
 			appendMessage("Starting iteration[" + it + "]");
-			int cycle = 0;
-			if (navValues.get(cycle).size() == 0) {
-				appendMessage("[" + cycle + "] empty market!");
-			}
+			cycle = 0;
+			// TODO: empty market!!
+			// if (navValues[cycle].size() == 0) {
+			// appendMessage("[" + cycle + "] empty market!");
+			// }
 
-			// long startCycle = System.currentTimeMillis();
-			while (units.size() > 1 && cycle < maxSize) {
-
-				List<Unit> epoch = new ArrayList<>(units);
-				//AtomicInteger removed = new AtomicInteger(0);
-				for (Unit unit : epoch) {
-					//oneStep(navValues, units, it, cycle, unit, removed);
-					oneStep(navValues, units, it, cycle, unit);
-				}
-				// if (removed.get() > 0) {
-				// appendMessage("[" + cycle + "]Number of removed:" + removed +
-				// " from " + POPULATION_SIZE);
-				// }
-				// int toBeAdded = POPULATION_SIZE - units.size();
-				// crossoverPopulation(navValues, units, it, cycle);
-
+			final int iteration = it;
+			while (population.size() > 1 && cycle < maxSize) {
+				final int finalCycle = cycle;
+				population.parallelStream()
+						.forEach(unit -> oneStep(navValues, dividends,population, iteration, finalCycle, unit));
 				cycle++;
+
 			}
 
-			List<Unit> winners = getWinners(cycle - 1, navValues, units, (int) (0.1 * POPULATION_SIZE));
-			for (Unit unit : winners) {
-				unit.logToFile(it);
-			}
+			int winner_size = (int) (0.02 * POPULATION_SIZE);
+			List<Unit> winners = getWinners(cycle - 1, navValues, population, winner_size > 10 ? 10 : winner_size);
 
-			crossoverPopulation(navValues, units, winners, it, cycle);
+			winners.parallelStream().forEach(unit -> unit.logToFile(iteration));
+
+			// simulation end condition
+			if (was90PercentReached(cycle - 1, navValues, population)) {
+				break;
+			}
+			// if(it >= ITER_MAX){
+			// break;
+			// }
+
+			// TODO: uz mam winner-a, mozno pouzit jeho??
+			crossoverPopulation(navValues, population, winners, it, cycle);
 
 			it++;
-			for (Unit unit : units) {
-				unit.resetAssets(it);
+
+			population.parallelStream().forEach(unit -> {
+				unit.resetAssets(0);
 				unit.resetLogs();
-			}
+			});
+
+			printMemoryUsage(it);
 		}
 
 		time = System.currentTimeMillis() - time;
 		appendMessage("Simulation end: " + Calendar.getInstance().getTime());
 		appendMessage("Simulation took: " + time + "[ms]");
+
+		printMemoryUsage(it);
 	}
 
-	private static void crossoverPopulation(List<Map<Integer, Float>> navValues, List<Unit> units, List<Unit> winners,
-			int it, int cycle) {
+	private static boolean was90PercentReached(int cycle, float[][] etfValueMap, List<Unit> population) {
+
+		List<Unit> winners = getWinners(cycle, etfValueMap, population, 1);
+		if (winners == null || winners.size() == 0) {
+			appendMessage("Winner[" + cycle + "]: not found!");
+			return false;
+		}
+
+		Unit winner = winners.get(0);
+		appendMessage("Winner[" + cycle + "]: " + winner.getID());
+
+		int counter = 0;
+
+		for (int etf_index = 0; etf_index < winner.getBuyPreferenceMap().length; etf_index++) {
+			if (winner.getBuyPreferenceMap()[etf_index] > 98) {
+				counter++;
+			}
+			if (counter > 9) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static void crossoverPopulation(float[][] navValues, List<Unit> units, List<Unit> winners, int it,
+			int cycle) {
 		Integer mutated = 0;
 		Integer crossover = 0;
 		units.clear();
@@ -196,68 +245,82 @@ public class Main {
 			newUnit.appendHistory(it, cycle, navValues);
 		}
 
-		appendMessage("[" + cycle + "]Number of crossover:" + crossover);
-		appendMessage("[" + cycle + "]Number of mutated:" + mutated);
-		appendMessage(
-				"[" + cycle + "]Number of normal units:" + units.stream().filter(u -> u instanceof UnitImpl).count());
-		appendMessage("[" + cycle + "]Number of choosy units:"
-				+ units.stream().filter(u -> u instanceof UnitChoosyImpl).count());
-		appendMessage("[" + cycle + "]Number of sigmoid units:"
-				+ units.stream().filter(u -> u instanceof UnitSigmoidImpl).count());
+		StringBuilder builder = new StringBuilder();
+		builder.append('[');
+		builder.append(cycle);
+		builder.append("]Number of crossover:");
+		builder.append(crossover);
+		appendMessage(builder.toString());
+
+		builder = new StringBuilder();
+		builder.append('[');
+		builder.append(cycle);
+		builder.append("]Number of mutated:");
+		builder.append(mutated);
+		appendMessage(builder.toString());
 	}
 
 	private static Unit getUnitImplementation(Unit winner) {
-		if (winner instanceof UnitChoosyImpl) {
-			return new UnitChoosyImpl(
-						UnitSequenceGenerator.getID(), 
-						winner.getCharacter(), 
-						winner.getBuyPreferenceMap(),
-						winner.getSellPreferenceMap(),
-						winner.getHoldPreferenceMap());
-		} else if (winner instanceof UnitSigmoidImpl) {
-			return new UnitSigmoidImpl(UnitSequenceGenerator.getID(), winner.getCharacter(), winner.getBuyPreferenceMap());
-		}
-		return new UnitImpl(UnitSequenceGenerator.getID(), winner.getCharacter(), winner.getBuyPreferenceMap());
+		// if (winner instanceof UnitChoosyImpl) {
+		// return new UnitChoosyImpl(UnitSequenceGenerator.getID(),
+		// winner.getCharacter(),
+		// winner.getBuyPreferenceMap(), winner.getSellPreferenceMap(),
+		// winner.getHoldPreferenceMap());
+		// } else if (winner instanceof UnitSigmoidImpl) {
+		// return new UnitSigmoidImpl(UnitSequenceGenerator.getID(),
+		// winner.getCharacter(),
+		// winner.getBuyPreferenceMap());
+		// }
+		// return new UnitImpl(UnitSequenceGenerator.getID(),
+		// winner.getCharacter(), winner.getBuyPreferenceMap());
+
+		return new UnitChoosyImpl(UnitSequenceGenerator.getID(), winner.getCharacter(), winner.getBuyPreferenceMap());
 	}
 
-	private static void oneStep(List<Map<Integer, Float>> navValues, List<Unit> units, int it, int cycle, Unit unit) {
+	private static void oneStep(float[][] navValues, float[][] dividends, List<Unit> units, int it, int cycle, Unit unit) {
 		if (cycle > 0 && cycle % INVESTMENT_PERIOD == 0) {
 			unit.addCash(INVESTMENT);
 		}
 
 		performAction(navValues, it, cycle, unit);
 
+		calculateDividends(dividends,it,cycle, unit);
+		
+		
 		unit.appendHistory(it, cycle, navValues);
-
-		// raz rocne budeme balancovat, ak su v strate idu prec
-		// raz pol-rocne budeme balancovat, ak su v strate idu prec
-		/*
-		 * if (cycle % REBALANCE_PERIOD == 0) { float cashAdded = (float)
-		 * (((int) (cycle / INVESTMENT_PERIOD)) * (INVESTMENT)); float coef =
-		 * 250.0f + cashAdded; float netAssetValue = unit.netAssetValue(cycle,
-		 * navValues); if (netAssetValue < coef) { units.remove(unit);
-		 * removed.incrementAndGet(); } }
-		 */
 	}
 
-	private static void performAction(List<Map<Integer, Float>> navValues, int it, int cycle, Unit unit) {
+	private static void calculateDividends(float[][] dividends, int it, int cycle, Unit unit) {
+		unit.calculateDividends(dividends, cycle);
+	}
+
+	private static void performAction(float[][] navValues, int it, int cycle, Unit unit) {
 		unit.performAction(navValues, it, cycle);
 	}
 
-	private static Map<Integer, Float> getEtfValueMap(List<ETF> loadedETFS, int cycle, Date startDate) {
-		Map<Integer, Float> etfValueMap = new HashMap<>();
+	private static float[] getEtfValueMap(List<ETF> loadedETFS, int cycle, Date startDate, boolean dividends) {
+		float[] etfValueMap = new float[loadedETFS.size()];
+		Arrays.fill(etfValueMap, 0.0f);
+
 		DateTime start = new DateTime(startDate.getTime());
 		DateTime actual = start.plusDays(cycle);
 		for (ETF etf : loadedETFS) {
-			Integer key = ETFMap.getInstance().getIndex(etf.getTicket());
+			int key = ETFMap.getInstance(loadedETFS.size()).getIndex(etf.getTicket());
 
-			Float nav = 0.0f;
+			float nav = 0.0f;
+					
 			DateTime etfStart = new DateTime(etf.getNavDataList().get(0).getDate().getTime());
 			if (!etfStart.isAfter(actual)) {
-				for (NavData navData : etf.getNavDataList()) {
+				
+				List<NavData> navDataList = dividends ? etf.getDividendList() : etf.getNavDataList();
+				if(navDataList == null){
+					break;
+				}
+				
+				for (NavData navData : navDataList) {
 					DateTime etfTime = new DateTime(navData.getDate().getTime());
 					if (etfTime.equals(actual)) {
-						nav = Float.valueOf(navData.getNav());
+						nav = navData.getNav();
 						break;
 					}
 				}
@@ -266,13 +329,13 @@ public class Main {
 				continue;
 			}
 
-			etfValueMap.put(key, nav);
+			etfValueMap[key] = nav;
 		}
 
 		return etfValueMap;
 	}
 
-	private static List<Unit> getVictims(int cycle, List<Map<Integer, Float>> etfValueMap, List<Unit> epoch, int num) {
+	private static List<Unit> getVictims(int cycle, float[][] etfValueMap, List<Unit> epoch, int num) {
 		return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Victim);
 	}
 
@@ -280,21 +343,21 @@ public class Main {
 		Winner, Victim
 	}
 
-	private static List<Unit> getWinners(int cycle, List<Map<Integer, Float>> etfValueMap, List<Unit> epoch, int num) {
+	private static List<Unit> getWinners(int cycle, float[][] etfValueMap, List<Unit> epoch, int num) {
 		return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Winner);
 	}
 
-	private static List<Unit> getChosen(int cycle, List<Map<Integer, Float>> etfValueMap, List<Unit> epoch, int num,
+	private static List<Unit> getChosen(int cycle, float[][] etfValueMap, List<Unit> epoch, int num,
 			ChosenType chosenType) {
-		List<Unit> chosenList = new ArrayList<Unit>();
-		Map<Float, List<Unit>> map = new HashMap<>();
+		List<Unit> chosenList = new ArrayList<Unit>(num);
+		Map<Float, List<Unit>> map = new HashMap<>(num);
 
 		for (Unit unit : epoch) {
 			Float key = Float.valueOf(unit.netAssetValue(cycle, etfValueMap));
 			if (map.containsKey(key)) {
 				map.get(key).add(unit);
 			} else {
-				List<Unit> u = new ArrayList<>();
+				List<Unit> u = new LinkedList<>();
 				u.add(unit);
 				map.put(key, u);
 			}

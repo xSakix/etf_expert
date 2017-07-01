@@ -1,33 +1,48 @@
 package org.eft.evol.model;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
 public class ETFMap {
 
-	private Map<String,Integer> mapETFToIndex = new HashMap<>();
-	
-	private static ETFMap INSTANCE = new ETFMap(); 
-	
-	public static ETFMap getInstance(){
+	private String[] mapETFToIndex;
+
+	private static ETFMap INSTANCE = null;
+
+	private ETFMap(int eTF_SIZE) {
+		mapETFToIndex = new String[eTF_SIZE];
+	}
+
+	public static ETFMap getInstance(int ETF_SIZE) {
+		if (INSTANCE == null) {
+			INSTANCE = new ETFMap(ETF_SIZE);
+		}
 		return INSTANCE;
 	}
-	
-	public void putIndex(String etfName, Integer index){
-		mapETFToIndex.put(etfName, index);
+
+	public static ETFMap getInstance() {
+		if (INSTANCE == null) {
+			throw new RuntimeException("Please call getInstance(int) to initialize etf name list.");
+		}
+		return INSTANCE;
 	}
-	
-	public Integer getIndex(String etfName){
-		return mapETFToIndex.get(etfName);
+
+	public void putIndex(String etfName, int index) {
+		if (index < mapETFToIndex.length)
+			mapETFToIndex[index] = etfName;
 	}
-	
-	public String getEtfName(Integer index){
-		for(Map.Entry<String, Integer> entry : mapETFToIndex.entrySet()){
-			if(Objects.equals(index, entry.getValue())){
-				return entry.getKey();
+
+	public int getIndex(String etfName) {
+		for (int i = 0; i < mapETFToIndex.length; i++) {
+			if (mapETFToIndex[i].equals(etfName)) {
+				return i;
 			}
 		}
-		return null;
+
+		return -1;
+	}
+
+	public String getEtfName(int index) {
+		if (index >= mapETFToIndex.length) {
+			return null;
+		}
+		return mapETFToIndex[index];
 	}
 }

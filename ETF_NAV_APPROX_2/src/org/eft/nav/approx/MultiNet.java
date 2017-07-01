@@ -48,133 +48,122 @@ public class MultiNet {
 	public static final double NORM = 1000.0d;
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-		
-		
+
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
-				.seed(Calendar.getInstance().getTimeInMillis())
-			    .iterations(10000)
-				 .activation(Activation.RELU)
-				 .weightInit(WeightInit.XAVIER)
-				 .learningRate(0.1)
-				 .regularization(true)
-				 .l2(1e-4)
-				 .list()
-				 .layer(0, new DenseLayer.Builder().nIn(2).nOut(3).activation(Activation.RELU).build())
-				 .layer(1, new DenseLayer.Builder().nIn(3).nOut(3).activation(Activation.RELU).build())
-				 .layer(2, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD).activation(Activation.SIGMOID).nIn(3).nOut(1).build())
-				 .backprop(true)
-				 .pretrain(false)
-				 .build();
-		
-		
+				.seed(Calendar.getInstance().getTimeInMillis()).iterations(10000).activation(Activation.RELU)
+				.weightInit(WeightInit.XAVIER).learningRate(0.1).regularization(true).l2(1e-4).list()
+				.layer(0, new DenseLayer.Builder().nIn(2).nOut(3).activation(Activation.RELU).build())
+				.layer(1, new DenseLayer.Builder().nIn(3).nOut(3).activation(Activation.RELU).build())
+				.layer(2,
+						new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+								.activation(Activation.SIGMOID).nIn(3).nOut(1).build())
+				.backprop(true).pretrain(false).build();
+
 		MultiLayerNetwork model = new MultiLayerNetwork(conf);
-        model.init();
-        model.setListeners(new ScoreIterationListener(10));
+		model.init();
+		model.setListeners(new ScoreIterationListener(10));
 
 		ETF etf = FileLoader.loadETFData(ETF_NAME);
 		String filename = prepareTraningSet(etf, 2, 1);
-        
+
 		LineIterator it = IOUtils.lineIterator(new InputStreamReader(new FileInputStream(filename)));
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			System.out.println(it.next());
 		}
-		
-		
-        //CollectionRecordReader
-        RecordReader rr = new CSVSequenceRecordReader(0,";");
-        rr.initialize(new FileSplit(new File(filename)));
-        DataSetIterator trainIter = new RecordReaderDataSetIterator(rr,2285);
 
-        while(rr.hasNext()){
-        	List<Writable> line = rr.next();
-        	System.out.println(Arrays.toString(line.toArray()));
-        }
-        
-        while(trainIter.hasNext()){
-        	DataSet data = trainIter.next();
-        	System.out.println(data.toString());
-        }
-        
-        for(int i =0 ; i<  100000;i++){
-        	model.fit(trainIter);
-        }
-        //Evaluation eval = new Evaluation(1);
-        
-        while(trainIter.hasNext()){
-        	DataSet data = trainIter.next();
-        	INDArray outputs = model.output(trainIter);
-        	System.out.println(outputs);
-        }
+		// CollectionRecordReader
+		RecordReader rr = new CSVSequenceRecordReader(0, ";");
+		rr.initialize(new FileSplit(new File(filename)));
+		DataSetIterator trainIter = new RecordReaderDataSetIterator(rr, 2285);
+
+		while (rr.hasNext()) {
+			List<Writable> line = rr.next();
+			System.out.println(Arrays.toString(line.toArray()));
+		}
+
+		while (trainIter.hasNext()) {
+			DataSet data = trainIter.next();
+			System.out.println(data.toString());
+		}
+
+		for (int i = 0; i < 100000; i++) {
+			model.fit(trainIter);
+		}
+		// Evaluation eval = new Evaluation(1);
+
+		while (trainIter.hasNext()) {
+			DataSet data = trainIter.next();
+			INDArray outputs = model.output(trainIter);
+			System.out.println(outputs);
+		}
 	}
 
-	public static String prepareTraningSet(ETF etf,int numOfInputs, int numOfOutputs) throws IOException{
-		int index=0;
-		int rowSize=numOfInputs+numOfOutputs;
-		String filename = etf.getTicket()+rowSize+".csv";
+	public static String prepareTraningSet(ETF etf, int numOfInputs, int numOfOutputs) throws IOException {
+		int index = 0;
+		int rowSize = numOfInputs + numOfOutputs;
+		String filename = etf.getTicket() + rowSize + ".csv";
 		File file = new File(filename);
-		if(file.exists()){
+		if (file.exists()) {
 			return filename;
-		}else{
+		} else {
 			file.createNewFile();
 		}
-		
-				
+
 		double[] history = new double[rowSize];
-		
-		for(NavData navData : etf.getNavDataList()){
-			
-			if(index < rowSize){
+
+		for (NavData navData : etf.getNavDataList()) {
+
+			if (index < rowSize) {
 				history[index] = getRounded(navData);
 			}
-			if(index >= rowSize){
-				
+			if (index >= rowSize) {
+
 				StringBuilder builder = new StringBuilder();
-				for(int i = 0; i < rowSize;i++){
+				for (int i = 0; i < rowSize; i++) {
 					builder.append(history[i]);
-					if(i < rowSize-1){
+					if (i < rowSize - 1) {
 						builder.append(";");
-					}else{
+					} else {
 						builder.append("\n");
 					}
 				}
 				Files.append(builder.toString(), file, Charset.defaultCharset());
-				
-				
+
 				double[] historyTmp = Arrays.copyOf(history, rowSize);
 				history = new double[rowSize];
-				
-				for (int i = 0; i < rowSize;i++) {
-					if(i < rowSize-1){
-						history[i] = historyTmp[i+1];
-					}else{
+
+				for (int i = 0; i < rowSize; i++) {
+					if (i < rowSize - 1) {
+						history[i] = historyTmp[i + 1];
+					} else {
 						history[i] = getRounded(navData);
 					}
 				}
-				
+
 			}
-			
+
 			index++;
-		}		
+		}
 
 		return filename;
 	}
 
 	public static double getRounded(NavData navData) {
-		double val = (double)(navData.getNav()/NORM);
-				
-	    return getRounded(val);
-		
+		double val = (double) (navData.getNav() / NORM);
+
+		return getRounded(val);
+
 	}
-	
+
 	public static double getRounded(double val) {
-		
+
 		DecimalFormat decimalFormat = new DecimalFormat("###.#####");
 		DecimalFormatSymbols dfs = new DecimalFormatSymbols();
-	    dfs.setDecimalSeparator('.');
-	    decimalFormat.setDecimalFormatSymbols(dfs);
-//		System.out.println(val);
-	    return Double.valueOf(decimalFormat.format(val));
-		
+		dfs.setDecimalSeparator('.');
+		decimalFormat.setDecimalFormatSymbols(dfs);
+		// System.out.println(val);
+		return Double.valueOf(decimalFormat.format(val));
+
 	}
 
 }

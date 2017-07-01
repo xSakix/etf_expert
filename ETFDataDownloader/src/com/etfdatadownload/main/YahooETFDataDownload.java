@@ -35,6 +35,7 @@ public class YahooETFDataDownload implements IETFDataDownloader {
 
 	public static final String URL1 = "https://uk.finance.yahoo.com/quote/%s/history";
 	public static final String URL = "https://query1.finance.yahoo.com/v7/finance/download/%s?period1=728262000&period2=%d&interval=1d&events=history&crumb=%s";
+	public static final String URL_DIV = "https://query1.finance.yahoo.com/v7/finance/download/%s?period1=728262000&period2=%d&interval=1d&events=div&crumb=%s";
 
 	private static String cookie = null;
 	private static String crumb = null;
@@ -57,6 +58,7 @@ public class YahooETFDataDownload implements IETFDataDownloader {
 		}
 
 		String url = String.format(URL, params.ticket, params.to.getTime(), crumb);
+		String url_div = String.format(URL_DIV, params.ticket, params.to.getTime(), crumb);
 
 		try {
 			System.out.println(url);
@@ -88,17 +90,73 @@ public class YahooETFDataDownload implements IETFDataDownloader {
 					if (last == 0.0f) {
 						last = Float.valueOf(nav);
 					}
-					
+
 					float tolerance = 5.0f;
-					
-					if(params.ticket.equals("SPY")){
-						tolerance=7.0f;
+
+					if (params.ticket.equals("SPY")) {
+						tolerance = 7.0f;
 					}
-					
+
 					if (Math.abs(last - Float.valueOf(nav).floatValue()) < tolerance) {
 						last = Float.valueOf(nav);
 						builder.append(data[0] + "," + nav + "\r\n");
 					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return Main.EMPTY_DATA;
+		}
+
+		return builder.toString();
+	}
+
+	@Override
+	public String downloadDiv(ETFDownloadParams params) throws Exception {
+
+		StringBuilder builder = new StringBuilder();
+
+		Calendar calendarFrom = Calendar.getInstance();
+		calendarFrom.setTime(params.from);
+
+		Calendar calendarTo = Calendar.getInstance();
+		calendarTo.setTime(params.to);
+
+		if (cookie == null)
+			loadCookie(params);
+		if (cookie == null || crumb == null) {
+			throw new Exception("Failed to retrieve cookie!");
+		}
+
+		String url = String.format(URL_DIV, params.ticket, params.to.getTime(), crumb);
+
+		try {
+			System.out.println(url);
+			java.net.URL theUrl = new java.net.URL(url);
+			URLConnection con = theUrl.openConnection();
+			con.setRequestProperty("Cookie", cookie);
+			String redirect = con.getHeaderField("Location");
+			if (redirect != null) {
+				con = new java.net.URL(redirect).openConnection();
+			}
+
+			InputStream iss = con.getInputStream();
+			if (con instanceof HttpURLConnection) {
+				HttpURLConnection httpCon = (HttpURLConnection) con;
+				if (httpCon.getResponseCode() != 200) {
+					throw new Exception(httpCon.getResponseMessage());
+				}
+			}
+
+			InputStreamReader is = new InputStreamReader(iss);
+			BufferedReader br = new BufferedReader(is);
+			br.readLine(); // skip the first line
+			// Parse CSV
+			for (String line = br.readLine(); line != null; line = br.readLine()) {
+				String[] data = line.split(YahooFinance.QUOTES_CSV_DELIMITER);
+				String nav = data[1];
+				if (nav != null && !"null".equals(nav)) {
+					builder.append(data[0] + "," + nav + "\r\n");
 				}
 			}
 		} catch (Exception e) {

@@ -11,5 +11,5 @@ public class ETFDownloadParams {
 	Date to;
 	String freq;
 	Stock stock;
-	
+
 }
