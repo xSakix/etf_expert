@@ -21,7 +21,21 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 	@Override
 	public boolean buy(int iteration, int cycle, float[][] etfValueMap) {
 
-		int index = Uniform.staticNextIntFromTo(0, etfValueMap[cycle].length - 1);
+		int index = 0;
+		
+		if(cache.size()  < 10){		
+			index = Uniform.staticNextIntFromTo(0, etfValueMap[cycle].length - 1);			
+		}else{
+			Integer[] indexes  = cache.keySet().toArray(new Integer[]{});
+			int chosenIndex = Uniform.staticNextIntFromTo(0, indexes.length-1);
+			try{
+				index = indexes[ chosenIndex ];
+			}catch(ArrayIndexOutOfBoundsException exc){
+				index = Uniform.staticNextIntFromTo(0, etfValueMap[cycle].length - 1);
+				System.err.println(String.format("index[%d] of %d length",chosenIndex,cache.size()));
+			}
+		}
+		
 		float nav = etfValueMap[cycle][index];
 		if (nav == 0.0f) {
 			return false;
@@ -29,7 +43,7 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 
 		byte choice = (byte) Uniform.staticNextIntFromTo(0, 100);
 		if (preference[index] >= choice) {
-			incrementPreference(index, preference);
+			//incrementPreference(index, preference);
 			return doBuyAction(iteration, cycle, etfValueMap, index, nav);
 		}
 

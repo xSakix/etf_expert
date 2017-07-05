@@ -4,9 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.eft.evol.stats.UnitAction;
 import org.eft.evol.stats.UnitState;
@@ -26,6 +32,8 @@ public abstract class AbstractUnit implements Unit {
 	float investment = cash;
 	// protected float sumGradient = 0.0f;
 	int[] etfs;
+	Map<Integer,Byte> cache = new HashMap<>(10);
+	
 
 	List<UnitAction> actions = new LinkedList<>();
 
@@ -44,6 +52,26 @@ public abstract class AbstractUnit implements Unit {
 	public AbstractUnit(int index, byte[] character, byte[] buyPreference) {
 		this.character = Arrays.copyOf(character, character.length);
 		this.preference = Arrays.copyOf(buyPreference, buyPreference.length);
+		
+		Map<Byte, List<Integer>> prefMap = new HashMap<>(buyPreference.length);
+		for(int i = 0;i < this.preference.length;i++){
+			if(!prefMap.containsKey(this.preference[i])){
+				prefMap.put(this.preference[i], new ArrayList<Integer>());
+			}
+			prefMap.get(preference[i]).add(i);
+		}
+		
+		List<Byte> keys = new ArrayList<Byte>(prefMap.keySet());
+		Collections.sort(keys, Collections.reverseOrder());
+		for(Byte key : keys){
+			List<Integer> etfIndexes = prefMap.get(key);
+			for(Integer etfIndex : etfIndexes){
+				if(cache.size() <= 10){
+					cache.put(etfIndex, key);
+				}
+			}
+		}
+		
 		this.ID = index;
 		this.etfs = new int[buyPreference.length];
 		Arrays.fill(etfs, 0);
@@ -56,8 +84,28 @@ public abstract class AbstractUnit implements Unit {
 		}
 
 		for (int i = 0; i < preference.length; i++) {
-			preference[i] = 50;
+			preference[i] = (byte) Uniform.staticNextIntFromTo(0, 99);
 		}
+		Map<Byte, List<Integer>> prefMap = new HashMap<>(preference.length);
+		for(int i = 0;i < this.preference.length;i++){
+			if(!prefMap.containsKey(this.preference[i])){
+				prefMap.put(this.preference[i], new ArrayList<Integer>());
+			}
+			prefMap.get(preference[i]).add(i);
+		}
+
+		
+		List<Byte> keys = new ArrayList<Byte>(prefMap.keySet());
+		Collections.sort(keys, Collections.reverseOrder());
+		for(Byte key : keys){
+			List<Integer> etfIndexes = prefMap.get(key);
+			for(Integer etfIndex : etfIndexes){
+				if(cache.size() <= 10){
+					cache.put(etfIndex, key);
+				}
+			}
+		}
+		
 
 		Arrays.fill(etfs, 0);
 	}
@@ -417,10 +465,12 @@ public abstract class AbstractUnit implements Unit {
 		return nPreference;
 	}
 
-	protected void incrementPreference(int index, byte[] preference2) {
-		if (preference2[index] + MODIFIER < 100) {
-			preference2[index] += MODIFIER;
-		}
+	protected void incrementPreference(int index, byte[] preference2) {		
+//		if (preference2[index] + MODIFIER < 100) {
+//			preference2[index] += MODIFIER;
+//			cache.put(index, preference2[index]);
+//		}
+		cache.put(index, preference2[index]);
 	}
 
 }

@@ -153,6 +153,11 @@ public class Analyzer {
 
 	private static Path getLastDirectory(List<Path> listing) {
 		Path result = null;
+		
+		if(listing.size() == 1){
+			result = listing.get(0);
+		}
+		
 		int max = 0;
 
 		for (Path p : listing) {
