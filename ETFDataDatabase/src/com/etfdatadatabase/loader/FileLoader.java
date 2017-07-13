@@ -102,7 +102,7 @@ public class FileLoader
 	InputStream inputFS = new FileInputStream(inputF);
 	// zoberiem natvrdo len rok dozadu
 	Calendar calFrom = Calendar.getInstance();
-	calFrom.set(Calendar.YEAR, 2016);
+	calFrom.set(Calendar.YEAR, 2000);
 	calFrom.set(Calendar.MONTH, 0);
 	calFrom.set(Calendar.DAY_OF_MONTH, 1);
 

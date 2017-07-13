@@ -36,7 +36,7 @@ public class Main
     private static final float INVESTMENT = 300.0f;
     private static final int POPULATION_SIZE = 1000;
     private static final float MUTATE = 0.05f;
-    private static final int ITER_MAX = 200;
+    private static final int ITER_MAX = 100;
     private static final int INVESTMENT_PERIOD = 30;
     // private static final int REBALANCE_PERIOD = 90;
 
@@ -116,6 +116,68 @@ public class Main
     {
 	List<Unit> population = new ArrayList<>(POPULATION_SIZE);
 	List<Float> results = new ArrayList<Float>();
+	initPopulation(eftSize, class1, population);
+	// int iterationsMax = ITER_MAX;
+	int it = 0;
+	appendMessage("Evolution start: " + Calendar.getInstance().getTime());
+	long time = System.currentTimeMillis();
+	// while (it < iterationsMax) {
+	int cycle = 0;
+	while (true)
+	{
+	    if (it >= ITER_MAX)
+	    {
+		break;
+	    }
+	    
+	    appendMessage("Starting iteration[" + it + "]");
+	    cycle = 0;
+
+	    final int iteration = it;
+	    while (population.size() > 1 && cycle < maxSize)
+	    {
+		final int finalCycle = cycle;
+		population.parallelStream().forEach(unit -> oneStep(navValues,
+			dividends, population, iteration, finalCycle, unit));
+		cycle++;
+
+	    }
+
+	    int winner_size = (int) (0.02 * POPULATION_SIZE);
+	    List<Unit> winners = getWinners(cycle - 1, navValues, population,
+		    winner_size > 10 ? 10 : winner_size);
+
+	    results.add(it, winners.get(0).netAssetValue(cycle - 1, navValues));
+
+	    winners.parallelStream().forEach(unit -> unit.logToFile(iteration));
+
+	    // TODO: uz mam winner-a, mozno pouzit jeho??
+	    crossoverPopulation(navValues, population, winners, it, cycle);
+	    population.addAll(winners);
+
+	    it++;
+
+	    population.parallelStream().forEach(unit -> {
+		unit.resetAssets(0);
+		unit.resetLogs();
+	    });
+
+	    printMemoryUsage(it);
+	}
+
+	time = System.currentTimeMillis() - time;
+	appendMessage("Simulation end: " + Calendar.getInstance().getTime());
+	appendMessage("Simulation took: " + time + "[ms]");
+
+	printMemoryUsage(it);
+
+	logResultsToFile(results);
+
+    }
+
+    private static void initPopulation(int eftSize,
+	    Class<UnitChoosyImpl> class1, List<Unit> population)
+    {
 	if (class1 != null)
 	{
 	    for (int i = 0; i < POPULATION_SIZE; i++)
@@ -136,72 +198,6 @@ public class Main
 			UnitSequenceGenerator.getID()));
 	    }
 	}
-	// int iterationsMax = ITER_MAX;
-	int it = 0;
-	appendMessage("Evolution start: " + Calendar.getInstance().getTime());
-	long time = System.currentTimeMillis();
-	// while (it < iterationsMax) {
-	int cycle = 0;
-	while (true)
-	{
-	    appendMessage("Starting iteration[" + it + "]");
-	    cycle = 0;
-	    // TODO: empty market!!
-
-	    final int iteration = it;
-	    while (population.size() > 1 && cycle < maxSize)
-	    {
-		final int finalCycle = cycle;
-		population.parallelStream().forEach(unit -> oneStep(navValues,
-			dividends, population, iteration, finalCycle, unit));
-		cycle++;
-
-	    }
-
-	    int winner_size = (int) (0.02 * POPULATION_SIZE);
-	    List<Unit> winners = getWinners(cycle - 1, navValues, population,
-		    winner_size > 10 ? 10 : winner_size);
-
-	    results.add(it, winners.get(0).netAssetValue(cycle - 1, navValues));
-
-	    winners.parallelStream().forEach(unit -> unit.logToFile(iteration));
-
-	    // simulation end condition
-	    // if (was90PercentReached(cycle - 1, navValues, population)) {
-	    // break;
-	    // }
-	    if (it >= ITER_MAX)
-	    {
-		break;
-	    }
-
-	    // TODO: uz mam winner-a, mozno pouzit jeho??
-	    crossoverPopulation(navValues, population, winners, it, cycle);
-	    population.addAll(winners);
-
-	    // for(int i = 0;i < POPULATION_SIZE;i++){
-	    // population.add(new UnitChoosyImpl(eftSize,
-	    // UnitSequenceGenerator.getID()));
-	    // }
-
-	    it++;
-
-	    population.parallelStream().forEach(unit -> {
-		unit.resetAssets(0);
-		unit.resetLogs();
-	    });
-
-	    printMemoryUsage(it);
-	}
-
-	time = System.currentTimeMillis() - time;
-	appendMessage("Simulation end: " + Calendar.getInstance().getTime());
-	appendMessage("Simulation took: " + time + "[ms]");
-
-	printMemoryUsage(it);
-
-	logResultsToFile(results);
-
     }
 
     private static void logResultsToFile(List<Float> results)
