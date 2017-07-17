@@ -36,7 +36,7 @@ public class Main
     private static final float INVESTMENT = 300.0f;
     private static final int POPULATION_SIZE = 1000;
     private static final float MUTATE = 0.05f;
-    private static final int ITER_MAX = 100;
+    private static final int ITER_MAX = 10;
     private static final int INVESTMENT_PERIOD = 30;
     // private static final int REBALANCE_PERIOD = 90;
 
@@ -79,6 +79,11 @@ public class Main
 	}
 
 	appendMessage("Loaded " + loadedETFS.size() + " etfs.");
+	appendMessage("Rate of mutation: "+MUTATE);
+	appendMessage("Iter max:"+ITER_MAX);
+	appendMessage("Investment period:"+INVESTMENT_PERIOD);
+	appendMessage("Investment money:"+INVESTMENT);
+	appendMessage("Population size:"+POPULATION_SIZE);
 
 	float[][] navValues = new float[maxSize][loadedETFS.size()];
 	float[][] dividends = new float[maxSize][loadedETFS.size()];
@@ -89,7 +94,6 @@ public class Main
 	    dividends[index] = getEtfValueMap(loadedETFS, index, start, true);
 	}
 
-	// System.out.println(Arrays.toString(loadedETFS.get(0).getNavDataList().toArray()));
 	int size = loadedETFS.size();
 	loadedETFS.clear();
 	loadedETFS = null;

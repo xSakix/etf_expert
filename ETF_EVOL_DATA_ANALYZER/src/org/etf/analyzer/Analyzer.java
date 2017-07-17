@@ -210,14 +210,14 @@ public class Analyzer {
 		DecimalFormat decimalFormat = new DecimalFormat("###,00");
 
 		keySet.forEach(key -> {
-			// Float buyPreference = holder.get(1).get(key) == null ? 0.0f :
-			// holder.get(1).get(key);
-			// Float sellPreference = holder.get(2).get(key) == null ? 0.0f :
-			// holder.get(2).get(key);
+			Float buyPreference = holder.get(1).get(key) == null ? 0.0f :
+			holder.get(1).get(key);
+			Float sellPreference = holder.get(2).get(key) == null ? 0.0f :
+			holder.get(2).get(key);
 			int holding = holdMap.get(key) == null ? 0 : holdMap.get(key);
 			String row = key + ";" + decimalFormat.format(holder.get(0).get(key)) + ";" +
-			// buyPreference+";" +
-			// sellPreference + ";" +
+			buyPreference+";" +
+			sellPreference + ";" +
 			holding + ";" + "http://www.etf.com/" + key + "?nopaging=1" + "\n";
 			try {
 				Files.write(analyzedData.toPath(), row.getBytes("UTF-8"), StandardOpenOption.APPEND);
