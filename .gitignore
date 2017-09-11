@@ -4,7 +4,6 @@
 */.classpath
 */.project
 *.xlsx
-*.csv
 *.exe
 *.bin
 *.jar
