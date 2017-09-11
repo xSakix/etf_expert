@@ -19,7 +19,7 @@ import java.util.Map;
 import org.eft.evol.model.ETFMap;
 import org.eft.evol.model.SimpleUnit;
 import org.eft.evol.model.Unit;
-import org.eft.evol.model.UnitChoosyImpl;
+import org.eft.evol.model.UnitGAmpl;
 import org.eft.evol.model.UnitSequenceGenerator;
 import org.etf.provider.ConfigProvider;
 import org.joda.time.DateTime;
@@ -134,7 +134,7 @@ public class SimpleUnitRebalancingMain
 		    int winner_size = (int) (0.5 * POPULATION_SIZE);
 		    List<SimpleUnit> winners = getWinners(cycle, navValues,
 			    population, winner_size);
-		
+
 		    crossoverPopulation(navValues, population, winners, it,
 			    cycle);
 

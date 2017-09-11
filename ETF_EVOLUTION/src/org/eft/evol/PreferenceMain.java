@@ -32,265 +32,567 @@ import cern.jet.random.Uniform;
 public class PreferenceMain
 {
 
+    private static final int NUMBER_OF_EXPERIMENTS = 1;
     private static final int INVESTMENT_PERIOD = 30;
     private static final float INVESTMENT = 300.0f;
     private static final int POPULATION_SIZE = 100;
     private static final float MUTATE = 0.05f;
     private static final int ITER_MAX = 200;
 
-    private static final File LOG = new File(
-	    ConfigProvider.DIR + "simulation.log");
-    
-    private static final File RESULTS_CSV = new File(
-	    ConfigProvider.DIR + ConfigProvider.DATE_STR + "_results.csv");
+    private static final File LOG = new File(getSimulationFileName());
+    private static final File RESULTS_CSV = new File(getResultCSVFileName());
+    private List<ETF> loadedETFS;
+    private List<Map<Integer, Float>> navValues = new ArrayList<>();
+    private List<Map<Integer, Float>> divValues = new ArrayList<>();
+    private List<PreferenceUnit> units = new ArrayList<>();
+    private List<Float> results = new ArrayList<Float>();
+    private int simulationDays;
+
+    private static String getSimulationFileName()
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append(ConfigProvider.DIR);
+	builder.append("simulation.log");
+
+	return builder.toString();
+    }
+
+    private static String getResultCSVFileName()
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append(ConfigProvider.DIR);
+	builder.append(ConfigProvider.DATE_STR);
+	builder.append("_results.csv");
+
+	return builder.toString();
+    }
 
     public static void main(String[] args) throws IOException
     {
+	PreferenceMain preferenceMain = new PreferenceMain();
+	preferenceMain.run();
+    }
 
-	List<ETF> loadedETFS = FileLoader.loadAllUSD(0);
+    public void run() throws IOException
+    {
 
-	for (int i = 0; i < loadedETFS.size(); i++)
+	loadedETFS = FileLoader.loadAllUSD(0);
+
+	initTicketToIndexOfETFMap();
+
+	ETF maxETFByRange = loadETFByLongestNavList();
+
+	this.simulationDays = loadSimulationDays(maxETFByRange);
+	Date start = loadSimulationStartDate(maxETFByRange);
+	Date finish = loadSimulationFinishDate(maxETFByRange);
+
+	System.out.println(getStartMessage(start, finish));
+
+	initializeNAVandDIV(start);
+
+	deleteLogFileIfExists();
+
+	appendInitMessagesToLog();
+
+	runExperiments();
+    }
+
+    private String getStartMessage(Date start, Date finish)
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append("Starting at ");
+	builder.append(start);
+	builder.append(" and finishing at ");
+	builder.append(finish);
+
+	return builder.toString();
+    }
+
+    private void runExperiments()
+    {
+	for (int i = 0; i < NUMBER_OF_EXPERIMENTS; i++)
 	{
-	    ETF etf = loadedETFS.get(i);
-	    ETFMap.getInstance(loadedETFS.size()).putIndex(etf.getTicket(), i);
+	    experiment();
 	}
+    }
 
-	ETF maxETFByRange = loadedETFS.stream().max(new Comparator<ETF>()
-	{
+    private void appendInitMessagesToLog()
+    {
+	StringBuilder builder = new StringBuilder();
+	builder.append("Loaded ");
+	builder.append(loadedETFS.size());
+	builder.append(" etfs.\n");
 
-	    @Override
-	    public int compare(ETF o1, ETF o2)
-	    {
-		return Integer.compare(o1.getNavDataList().size(),
-			o2.getNavDataList().size());
-	    }
-	}).get();
-	int maxSize = maxETFByRange.getNavDataList().size();
-	Date start = maxETFByRange.getNavDataList().get(0).getDate();
-	Date finish = maxETFByRange.getNavDataList().get(maxSize - 1).getDate();
-	System.out.println(
-		"Starting at " + start + " and finishing at " + finish);
+	builder.append("Rate of mutation: ");
+	builder.append(MUTATE);
+	builder.append('\n');
 
-	
-	List<Map<Integer, Float>> navValues = new ArrayList<>();
-	List<Map<Integer, Float>> divValues = new ArrayList<>();
+	builder.append("Iter max:");
+	builder.append(ITER_MAX);
+	builder.append('\n');
 
-	for (int index = 0; index < maxSize; index++)
-	{
-	    navValues.add(index, getEtfValueMap(loadedETFS, index, start,false));
-	    divValues.add(index, getEtfValueMap(loadedETFS, index, start,true));
-	}
+	builder.append("Investment period:");
+	builder.append(INVESTMENT_PERIOD);
+	builder.append('\n');
 
-	
+	builder.append("Investment money:");
+	builder.append(INVESTMENT);
+	builder.append('\n');
+
+	builder.append("Population size:");
+	builder.append(POPULATION_SIZE);
+	builder.append('\n');
+
+	appendMessage(builder.toString());
+    }
+
+    private void deleteLogFileIfExists()
+    {
 	if (!Files.exists(LOG.toPath()))
 	{
 	    LOG.delete();
 	}
+    }
 
-	appendMessage("Loaded " + loadedETFS.size() + " etfs.");
-	appendMessage("Rate of mutation: "+MUTATE);
-	appendMessage("Iter max:"+ITER_MAX);
-	appendMessage("Investment period:"+INVESTMENT_PERIOD);
-	appendMessage("Investment money:"+INVESTMENT);
-	appendMessage("Population size:"+POPULATION_SIZE);
-	
-	for(int i = 0; i < 10;i++){
-	    experiment(loadedETFS, maxSize, navValues,divValues);
+    private void initializeNAVandDIV(Date start)
+    {
+	for (int day = 0; day < simulationDays; day++)
+	{
+	    navValues.add(day, getEtfValueMap(day, start, false));
+	    divValues.add(day, getEtfValueMap(day, start, true));
 	}
     }
 
-    private static <T extends PreferenceUnit> void experiment(
-	    List<ETF> loadedETFS, int maxSize,
-	    List<Map<Integer, Float>> navValues, List<Map<Integer, Float>> divValues)
+    private int loadSimulationDays(ETF maxETFByRange)
     {
-	List<PreferenceUnit> units = new ArrayList<>();
-	List<Float> results = new ArrayList<Float>();
-	
+	return maxETFByRange.getNavDataList().size();
+    }
+
+    private Date loadSimulationFinishDate(ETF maxETFByRange)
+    {
+	return maxETFByRange.getNavDataList().get(simulationDays - 1).getDate();
+    }
+
+    private Date loadSimulationStartDate(ETF maxETFByRange)
+    {
+	return maxETFByRange.getNavDataList().get(0).getDate();
+    }
+
+    private ETF loadETFByLongestNavList()
+    {
+	return loadedETFS.stream().max(new ETFComparator()).get();
+    }
+
+    private void initTicketToIndexOfETFMap()
+    {
+	ETFMap etfMap = ETFMap.getInstance(loadedETFS.size());
+
+	for (int i = 0; i < loadedETFS.size(); i++)
+	{
+	    addOneETF(etfMap, i);
+	}
+    }
+
+    private void addOneETF(ETFMap etfMap, int i)
+    {
+	ETF etf = loadedETFS.get(i);
+	String ticket = etf.getTicket();
+	etfMap.putIndex(ticket, i);
+    }
+
+    private <T extends PreferenceUnit> void experiment()
+    {
+	initializePopulation();
+
+	int it = 0;
+	logEvolutionStartMsg();
+
+	long time = System.currentTimeMillis();
+
+	while (true)
+	{
+	    List<PreferenceUnit> winners = runOneIteration(it);
+
+	    if (endConditionReached(winners))
+	    {
+		break;
+	    }
+
+	    it++;
+	    resetPopulation(it);
+	}
+
+	appendSimulationEndMessages(time);
+
+	logResultsToFile();
+    }
+
+    private void logEvolutionStartMsg()
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append("Evolution start: ");
+	builder.append(Calendar.getInstance().getTime());
+
+	appendMessage(builder.toString());
+    }
+
+    private boolean endConditionReached(List<PreferenceUnit> winners)
+    {
+	return was90PercentReached(winners);
+    }
+
+    private List<PreferenceUnit> runOneIteration(int it)
+    {
+	startIterationMessage(it);
+	int day = 0;
+
+	checkEmptyMarketSituation(day);
+
+	runOneFullSimulation(it, day);
+
+	return processWinners(it);
+    }
+
+    private List<PreferenceUnit> processWinners(int it)
+    {
+	int lastDayOfSimulation = simulationDays - 1;
+
+	List<PreferenceUnit> winners = getWinners(lastDayOfSimulation, 10);
+
+	float winnerNAV = winners.get(0).netAssetValue(lastDayOfSimulation,
+		navValues);
+
+	results.add(it, winnerNAV);
+
+	logWinnersToFiles(it, winners);
+
+	return winners;
+    }
+
+    private void logWinnersToFiles(int it, List<PreferenceUnit> winners)
+    {
+	for (PreferenceUnit unit : winners)
+	{
+	    unit.logToFile(it);
+	}
+    }
+
+    private void runOneFullSimulation(int it, int day)
+    {
+	while (units.size() > 1 && day < simulationDays)
+	{
+
+	    runOneDay(it, day++);
+	}
+    }
+
+    private void runOneDay(int it, int day)
+    {
+	List<PreferenceUnit> epoch = new ArrayList<>(units);
+
+	AtomicInteger removed = new AtomicInteger(0);
+
+	for (PreferenceUnit unit : epoch)
+	{
+	    oneStep(it, day, unit, removed);
+	}
+
+	adjustPopulation(it, day, removed);
+    }
+
+    private void startIterationMessage(int it)
+    {
+	String msg = String.format("Starting iteration[%d]\n", it);
+	System.out.println(msg);
+	appendMessage(msg);
+    }
+
+    private void checkEmptyMarketSituation(int day)
+    {
+	if (navValues.get(day).size() == 0)
+	{
+	    appendMessage(String.format("[%d] empty market!\n", day));
+	}
+    }
+
+    private void appendSimulationEndMessages(long time)
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append("Simulation end: ");
+	builder.append(Calendar.getInstance().getTime());
+	builder.append('\n');
+	builder.append("Simulation took: ");
+	builder.append((System.currentTimeMillis() - time));
+	builder.append("[ms]");
+	builder.append('\n');
+
+	appendMessage(builder.toString());
+    }
+
+    private void resetPopulation(int it)
+    {
+	for (PreferenceUnit unit : units)
+	{
+	    unit.resetAssets(it);
+	    unit.resetLogs();
+	}
+    }
+
+    private final class ETFComparator implements Comparator<ETF>
+    {
+	@Override
+	public int compare(ETF o1, ETF o2)
+	{
+	    return Integer.compare(loadSimulationDays(o1),
+		    loadSimulationDays(o2));
+	}
+    }
+
+    private class CrossoverMutatePop
+    {
+	Integer mutated = 0;
+	Integer crossover = 0;
+
+	public void crossOrMutate(int it, int cycle, AtomicInteger removed,
+		int toBeAdded)
+	{
+	    List<PreferenceUnit> winners = getWinners(cycle, toBeAdded * 2);
+
+	    if (isOnlyOneWinner(winners))
+	    {
+		mutateWinnerUntilPopulationFilled(it, cycle, winners);
+	    } else
+	    {
+		crossOrMutatePopulation(it, cycle, winners);
+	    }
+	}
+
+	private void crossOrMutatePopulation(int it, int cycle,
+		List<PreferenceUnit> winners)
+	{
+	    while (units.size() != POPULATION_SIZE)
+	    {
+		addOneUnitViaCrossAndMutate(it, cycle, winners);
+	    }
+	}
+
+	private void addOneUnitViaCrossAndMutate(int it, int cycle,
+		List<PreferenceUnit> winners)
+	{
+	    int firstChosen = Uniform.staticNextIntFromTo(0,
+		    winners.size() - 1);
+	    int secondChosen = Uniform.staticNextIntFromTo(0,
+		    winners.size() - 1);
+
+	    PreferenceUnit first = winners.get(firstChosen);
+	    PreferenceUnit second = winners.get(secondChosen);
+	    PreferenceUnit newUnit = first.crossOver(second);
+	    crossover++;
+
+	    if (MUTATE >= Uniform.staticNextFloatFromTo(0.0f, 1.0f))
+	    {
+		newUnit.mutate();
+		mutated++;
+	    }
+
+	    newUnit.addCash(first.getInvesment() - Unit.BASE_CASH);
+
+	    units.add(newUnit);
+	    newUnit.appendHistory(it, cycle, navValues);
+	}
+
+	private void mutateWinnerUntilPopulationFilled(int it, int cycle,
+		List<PreferenceUnit> winners)
+	{
+	    appendMessage(String.format(
+		    "[%d] Only one winner found. Population stagnates....adding mutation of winner to population.",
+		    cycle));
+
+	    PreferenceUnit winner = winners.get(0);
+
+	    while (units.size() != POPULATION_SIZE)
+	    {
+		mutateTheChosenWinner(units, it, cycle, winner);
+	    }
+
+	}
+
+	private void mutateTheChosenWinner(List<PreferenceUnit> units, int it,
+		int cycle, PreferenceUnit winner)
+	{
+	    PreferenceUnit newUnit = getUnitImplementation(winner);
+	    newUnit.mutate();
+	    mutated++;
+	    newUnit.addCash(winner.getInvesment() - Unit.BASE_CASH);
+	    units.add(newUnit);
+	    newUnit.appendHistory(it, cycle, navValues);
+
+	}
+
+    }
+
+    private void adjustPopulation(int it, int cycle, AtomicInteger removed)
+    {
+	logRemovedUnits(cycle, removed);
+
+	int toBeAdded = POPULATION_SIZE - units.size();
+
+	if (!needsToAddNewUnits(toBeAdded))
+	{
+	    return;
+	}
+
+	CrossoverMutatePop crossoverMutatePop = new CrossoverMutatePop();
+
+	crossoverMutatePop.crossOrMutate(it, cycle, removed, toBeAdded);
+
+	appendCrossAndMutMsg(cycle, crossoverMutatePop);
+
+    }
+
+    private void appendCrossAndMutMsg(int cycle,
+	    CrossoverMutatePop crossoverMutatePop)
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append('[');
+	builder.append(cycle);
+	builder.append("]Number of crossover:");
+	builder.append(crossoverMutatePop.crossover);
+	builder.append('\n');
+
+	builder.append('[');
+	builder.append(cycle);
+	builder.append("]Number of mutated:");
+	builder.append(crossoverMutatePop.mutated);
+	builder.append('\n');
+
+	appendMessage(builder.toString());
+    }
+
+    private boolean isOnlyOneWinner(List<PreferenceUnit> winners)
+    {
+	return winners.size() == 1;
+    }
+
+    private boolean needsToAddNewUnits(int toBeAdded)
+    {
+	return toBeAdded > 0;
+    }
+
+    private void logRemovedUnits(int cycle, AtomicInteger removed)
+    {
+	if (unitsWhereRemoved(removed))
+	{
+	    StringBuilder builder = new StringBuilder();
+
+	    builder.append('[');
+	    builder.append(cycle);
+	    builder.append("]Number of removed:");
+	    builder.append(removed);
+	    builder.append(" from ");
+	    builder.append(POPULATION_SIZE);
+
+	    appendMessage(builder.toString());
+	}
+    }
+
+    private boolean unitsWhereRemoved(AtomicInteger removed)
+    {
+	return removed.get() > 0;
+    }
+
+    private void initializePopulation()
+    {
 	for (int i = 0; i < POPULATION_SIZE; i++)
 	{
 
 	    units.add(new UnitWithPreference(loadedETFS.size(),
 		    UnitSequenceGenerator.getID()));
 	}
-
-	int it = 0;
-	appendMessage("Evolution start: " + Calendar.getInstance().getTime());
-	long time = System.currentTimeMillis();
-	while (true)
-	{
-	    String msg = "Starting iteration[" + it + "]";
-	    System.out.println(msg);
-	    appendMessage(msg);
-	    int cycle = 0;
-	    if (navValues.get(cycle).size() == 0)
-	    {
-		appendMessage("[" + cycle + "] empty market!");
-	    }
-
-	    while (units.size() > 1 && cycle < maxSize)
-	    {
-
-		List<PreferenceUnit> epoch = new ArrayList<>(units);
-		AtomicInteger removed = new AtomicInteger(0);
-		for (PreferenceUnit unit : epoch)
-		{
-		    oneStep(navValues,divValues, units, it, cycle, unit, removed);
-		}
-		if (removed.get() > 0)
-		{
-		    appendMessage("[" + cycle + "]Number of removed:" + removed
-			    + " from " + POPULATION_SIZE);
-		}
-		int toBeAdded = POPULATION_SIZE - units.size();
-
-		Integer mutated = 0;
-		Integer crossover = 0;
-		if (toBeAdded > 0)
-		{
-		    List<PreferenceUnit> winners = getWinners(cycle, navValues,
-			    units, toBeAdded * 2);
-		    if (winners.size() == 1)
-		    {
-			appendMessage("[" + cycle
-				+ "] Only one winner found. Population stagnates....adding mutation of winner to population.");
-			PreferenceUnit winner = winners.get(0);
-			while (units.size() != POPULATION_SIZE)
-			{
-			    PreferenceUnit newUnit = getUnitImplementation(
-				    winner);
-			    newUnit.mutate();
-			    mutated++;
-			    newUnit.addCash(
-				    winner.getInvesment() - Unit.BASE_CASH);
-			    units.add(newUnit);
-			    newUnit.appendHistory(it, cycle, navValues);
-			}
-		    } else
-		    {
-			while (units.size() != POPULATION_SIZE)
-			{
-			    int firstChosen = 0;
-			    int secondChosen = 1;
-			    if (winners.size() > 2)
-			    {
-				firstChosen = Uniform.staticNextIntFromTo(0,
-					winners.size() - 1);
-				secondChosen = Uniform.staticNextIntFromTo(0,
-					winners.size() - 1);
-				while (secondChosen == firstChosen)
-				{
-				    secondChosen = Uniform.staticNextIntFromTo(
-					    0, winners.size() - 1);
-				}
-			    }
-
-			    PreferenceUnit first = winners.get(firstChosen);
-			    PreferenceUnit second = winners.get(secondChosen);
-			    PreferenceUnit newUnit = first.crossOver(second);
-			    crossover++;
-
-			    if (MUTATE >= Uniform.staticNextFloatFromTo(0.0f,
-				    1.0f))
-			    {
-				newUnit.mutate();
-				mutated++;
-			    }
-
-			    newUnit.addCash(
-				    first.getInvesment() - Unit.BASE_CASH);
-
-			    units.add(newUnit);
-			    newUnit.appendHistory(it, cycle, navValues);
-			}
-		    }
-		    appendMessage(
-			    "[" + cycle + "]Number of crossover:" + crossover);
-		    appendMessage(
-			    "[" + cycle + "]Number of mutated:" + mutated);
-
-		}
-		cycle++;
-	    }
-
-	    List<PreferenceUnit> winners = getWinners(cycle - 1, navValues, units, 10);
-	    
-	    results.add(it, winners.get(0).netAssetValue(cycle - 1, navValues));
-	    
-	    for (PreferenceUnit unit : winners)
-	    {
-		unit.logToFile(it);
-	    }
-
-	    if(was90PercentReached(winners)){
-		break;
-	    }
-
-	    
-	    it++;
-	    for (PreferenceUnit unit : units)
-	    {
-		unit.resetAssets(it);
-		unit.resetLogs();
-	    }
-	}
-
-	time = System.currentTimeMillis() - time;
-	appendMessage("Simulation end: " + Calendar.getInstance().getTime());
-	appendMessage("Simulation took: " + time + "[ms]");
-	
-	logResultsToFile(results);
     }
 
-    private static PreferenceUnit getUnitImplementation(PreferenceUnit winner)
+    private PreferenceUnit getUnitImplementation(PreferenceUnit winner)
     {
 	return new UnitWithPreference(UnitSequenceGenerator.getID(),
 		winner.getCharacter(), winner.getPreferences());
     }
 
-    private static void oneStep(List<Map<Integer, Float>> navValues,
-	    List<Map<Integer, Float>> divValues, List<PreferenceUnit> units, int it, int cycle, PreferenceUnit unit,
+    private void oneStep(int it, int cycle, PreferenceUnit unit,
 	    AtomicInteger removed)
     {
-	if (cycle > 0 && cycle % INVESTMENT_PERIOD == 0)
+	if (shouldAddInvestmentMoney(cycle))
 	{
 	    unit.addCash(INVESTMENT);
 	}
 
-	performAction(navValues, it, cycle, unit);
+	performAction(it, cycle, unit);
 
-	calculateDividends(divValues, it, cycle, unit);
-	
+	calculateDividends(it, cycle, unit);
+
 	unit.appendHistory(it, cycle, navValues);
 
-	// raz rocne budeme balancovat, ak su v strate idu prec
-	if (cycle % 365 == 0)
+	balancePopulation(cycle, unit, removed);
+    }
+
+    private boolean shouldAddInvestmentMoney(int cycle)
+    {
+	return cycle > 0 && cycle % INVESTMENT_PERIOD == 0;
+    }
+
+    private void balancePopulation(int cycle, PreferenceUnit unit,
+	    AtomicInteger removed)
+    {
+	if (cycle % 365 != 0)
 	{
-	    float cashAdded = (float) (((int) (cycle / 120))
-		    * (INVESTMENT / 2.0f));
-	    float coef = 200.0f + cashAdded;
-	    float netAssetValue = unit.netAssetValue(cycle, navValues);
-	    if (netAssetValue < coef)
-	    {
-		units.remove(unit);
-		removed.incrementAndGet();
-	    }
+	    return;
+	}
+
+	float cashAdded = computeCashToBeAdded(cycle);
+	float coef = 200.0f + cashAdded;
+	float netAssetValue = unit.netAssetValue(cycle, navValues);
+
+	if (unitShouldBeRemoved(coef, netAssetValue))
+	{
+	    removeUnit(unit, removed);
 	}
     }
 
-    private static void performAction(List<Map<Integer, Float>> navValues,
-	    int it, int cycle, PreferenceUnit unit)
+    private void removeUnit(PreferenceUnit unit, AtomicInteger removed)
+    {
+	units.remove(unit);
+	removed.incrementAndGet();
+    }
+
+    private boolean unitShouldBeRemoved(float coef, float netAssetValue)
+    {
+	return netAssetValue < coef;
+    }
+
+    private float computeCashToBeAdded(int cycle)
+    {
+	float investmentCoef = INVESTMENT / 2.0f;
+	int cyclePeriod = cycle / 120;
+	return (float) (cyclePeriod * investmentCoef);
+    }
+
+    private void performAction(int it, int cycle, PreferenceUnit unit)
     {
 	unit.performAction(navValues, it, cycle);
     }
-    private static void calculateDividends(List<Map<Integer, Float>> dividends, int it,
-	    int cycle, PreferenceUnit unit)
-    {
-	unit.calculateDividends(dividends, cycle);
-    }
-    
 
-    private static Map<Integer, Float> getEtfValueMap(List<ETF> loadedETFS,
-	    int cycle, Date startDate, boolean dividends)
+    private void calculateDividends(int it, int cycle, PreferenceUnit unit)
+    {
+	unit.calculateDividends(divValues, cycle);
+    }
+
+    private Map<Integer, Float> getEtfValueMap(int cycle, Date startDate,
+	    boolean dividends)
     {
 	Map<Integer, Float> etfValueMap = new HashMap<>();
 	DateTime start = new DateTime(startDate.getTime());
@@ -301,7 +603,7 @@ public class PreferenceMain
 
 	    Float nav = 0.0f;
 	    DateTime etfStart = new DateTime(
-		    etf.getNavDataList().get(0).getDate().getTime());
+		    loadSimulationStartDate(etf).getTime());
 	    if (!etfStart.isAfter(actual))
 	    {
 		List<NavData> navDataList = dividends ? etf.getDividendList()
@@ -310,7 +612,7 @@ public class PreferenceMain
 		{
 		    break;
 		}
-		
+
 		for (NavData navData : navDataList)
 		{
 		    DateTime etfTime = new DateTime(
@@ -333,33 +635,15 @@ public class PreferenceMain
 	return etfValueMap;
     }
 
-    private static List<PreferenceUnit> getVictims(int cycle,
-	    List<Map<Integer, Float>> etfValueMap, List<PreferenceUnit> epoch, int num)
+    private List<PreferenceUnit> getWinners(int cycle, int num)
     {
-	return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Victim);
-    }
 
-    private enum ChosenType
-    {
-	Winner, Victim
-    }
-
-    private static List<PreferenceUnit> getWinners(int cycle,
-	    List<Map<Integer, Float>> etfValueMap, List<PreferenceUnit> epoch, int num)
-    {
-	return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Winner);
-    }
-
-    private static List<PreferenceUnit> getChosen(int cycle,
-	    List<Map<Integer, Float>> etfValueMap, List<PreferenceUnit> epoch, int num,
-	    ChosenType chosenType)
-    {
 	List<PreferenceUnit> chosenList = new ArrayList<PreferenceUnit>();
 	Map<Float, List<PreferenceUnit>> map = new HashMap<>();
 
-	for (PreferenceUnit unit : epoch)
+	for (PreferenceUnit unit : units)
 	{
-	    Float key = Float.valueOf(unit.netAssetValue(cycle, etfValueMap));
+	    Float key = Float.valueOf(unit.netAssetValue(cycle, navValues));
 	    if (map.containsKey(key))
 	    {
 		map.get(key).add(unit);
@@ -373,13 +657,8 @@ public class PreferenceMain
 	}
 
 	List<Float> ordered = new ArrayList<>(map.keySet());
-	if (chosenType == ChosenType.Winner)
-	{
-	    Collections.sort(ordered, Collections.reverseOrder());
-	} else if (chosenType == ChosenType.Victim)
-	{
-	    Collections.sort(ordered);
-	}
+
+	Collections.sort(ordered, Collections.reverseOrder());
 
 	for (Float key : ordered)
 	{
@@ -390,8 +669,6 @@ public class PreferenceMain
 		    chosenList.addAll(map.get(key));
 		} else
 		{
-		    // cs + ms <= num
-		    // ms <= num - cs
 		    chosenList.addAll(
 			    map.get(key).subList(0, num - chosenList.size()));
 		}
@@ -404,12 +681,13 @@ public class PreferenceMain
 	return chosenList;
     }
 
-    public static void appendMessage(String msg)
+    public void appendMessage(String msg)
     {
 	if (!msg.endsWith("\n"))
 	{
 	    msg += "\n";
 	}
+
 	if (!Files.exists(LOG.toPath()))
 	{
 	    try
@@ -421,6 +699,7 @@ public class PreferenceMain
 		return;
 	    }
 	}
+
 	try
 	{
 	    Files.write(LOG.toPath(), msg.getBytes(),
@@ -431,8 +710,8 @@ public class PreferenceMain
 	}
 
     }
-    
-    private static void logResultsToFile(List<Float> results)
+
+    private void logResultsToFile()
     {
 	if (!Files.exists(RESULTS_CSV.toPath()))
 	{
@@ -468,8 +747,7 @@ public class PreferenceMain
 
     }
 
-    
-    private static boolean was90PercentReached(List<PreferenceUnit> winners)
+    private boolean was90PercentReached(List<PreferenceUnit> winners)
     {
 
 	if (winners == null || winners.size() == 0)
@@ -498,5 +776,5 @@ public class PreferenceMain
 
 	return false;
     }
-    
+
 }

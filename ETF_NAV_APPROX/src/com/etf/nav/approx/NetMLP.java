@@ -30,8 +30,9 @@ import com.etfdatadatabase.loader.FileLoader;
 
 public class NetMLP {
 
-	private static final String ETF_NAME = "VBK";
-	private static final int SIZE = 4;
+	private static final String ETF_NAME = "SPY";
+	private static final int SIZE = 300;
+	private static final int OUT_SIZE = 30;
 	private static final int TEST_SIZE = 365;
 
 	public static void main(String[] args) throws IOException {
@@ -45,7 +46,7 @@ public class NetMLP {
 		// Customize Chart
 		chart.getStyler().setLegendVisible(true);
 		System.out.println("SIZE: " + SIZE);
-		DataSet trainingSet = TrainingSetCreator.getTrainingSet(etf, SIZE);
+		DataSet trainingSet = TrainingSetCreator.getTrainingSet(etf, SIZE,OUT_SIZE);
 
 		for (DataSetRow row : trainingSet.getRows()) {
 			String in = Arrays.toString(row.getInput());
@@ -58,7 +59,7 @@ public class NetMLP {
 		int maxIterations = 100000;
 
 		@SuppressWarnings("rawtypes")
-		NeuralNetwork neuralNet = new MultiLayerPerceptron(SIZE, 4, 1);
+		NeuralNetwork neuralNet = new MultiLayerPerceptron(SIZE, 2*SIZE, OUT_SIZE);
 
 		BackPropagation bpg = (BackPropagation) neuralNet.getLearningRule();
 		bpg.setMaxError(0.000001d);
@@ -87,8 +88,11 @@ public class NetMLP {
 			neuralNet.calculate();
 			double[] out = Arrays.copyOf(neuralNet.getOutput(), neuralNet.getOutput().length);
 			calculated.addRow(row.getInput(), out);
-			double error = 0.5d
-					* Math.pow(Math.abs(row.getDesiredOutput()[0] - TrainingSetCreator.getRounded(out[0])), 2);
+			double error = 0.0d;
+			for(int i = 0; i < row.getDesiredOutput().length;i++){
+				error+=Math.pow(Math.abs(row.getDesiredOutput()[i] - TrainingSetCreator.getRounded(out[i])), 2);
+			}
+			error*=0.5d;
 			if (error > maxError) {
 				maxError = error;
 			}
@@ -155,9 +159,11 @@ public class NetMLP {
 
 		int index = 0;
 		for (DataSetRow row : dataSet.getRows()) {
-			xData.add(index++);
-			double output = row.getDesiredOutput()[0] * TrainingSetCreator.NORM;
-			yData.add(output);
+			for(int i = 0; i < row.getDesiredOutput().length;i++ ){
+				xData.add(index++);
+				double output = row.getDesiredOutput()[i] * TrainingSetCreator.NORM;
+				yData.add(output);
+			}
 
 		}
 

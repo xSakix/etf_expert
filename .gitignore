@@ -3,12 +3,14 @@
 */.settings
 */.classpath
 */.project
+*.xlsx
 *.csv
 *.exe
 *.bin
 *.jar
 *.stackdump
 *.log
+*.obj
 out.txt
 nets
 neuroph

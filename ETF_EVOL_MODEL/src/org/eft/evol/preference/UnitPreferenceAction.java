@@ -12,6 +12,7 @@ public class UnitPreferenceAction {
 	public float nav;
 	public int indexOfETF;
 	public float gradient;
+	public float r_action;
 	
 	@Override
 	public String toString() {
@@ -30,6 +31,8 @@ public class UnitPreferenceAction {
 		builder.append(nav);
 		builder.append(",");
 		builder.append(gradient);
+		builder.append(',');
+		builder.append(r_action);
 		builder.append("\n");
 		
 		return builder.toString();

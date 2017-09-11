@@ -86,21 +86,9 @@ public class YahooETFDataDownload implements IETFDataDownloader {
 			for (String line = br.readLine(); line != null; line = br.readLine()) {
 				String[] data = line.split(YahooFinance.QUOTES_CSV_DELIMITER);
 				String nav = data[1];
-				if (nav != null && !"null".equals(nav)) {
-					if (last == 0.0f) {
-						last = Float.valueOf(nav);
-					}
-
-					float tolerance = 5.0f;
-
-					if (params.ticket.equals("SPY")) {
-						tolerance = 7.0f;
-					}
-
-					if (Math.abs(last - Float.valueOf(nav).floatValue()) < tolerance) {
-						last = Float.valueOf(nav);
-						builder.append(data[0] + "," + nav + "\r\n");
-					}
+				if (nav != null && !"null".equals(nav)) {					
+					last = Float.valueOf(nav);
+					builder.append(data[0] + "," + nav + "\r\n");
 				}
 			}
 		} catch (Exception e) {

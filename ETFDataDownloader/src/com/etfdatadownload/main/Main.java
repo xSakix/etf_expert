@@ -32,7 +32,7 @@ public class Main {
 
 		// TickerNasdaqNamesDownloader.downloadTickers();
 
-		String tickers = "etf_tickers.csv";
+		String tickers = "etf_tickers_nasdaq.csv";
 		String tickerData = null;
 
 		Path tickerFile = Paths.get(dir.toString(), tickers);
@@ -63,9 +63,10 @@ public class Main {
 			Files.createDirectories(Paths.get(dir.toString() + "\\" + currencyDirectory));
 
 			if (Files.exists(dataFile)) {
-				System.out.println("deleting file:" + dataFile.toString());
-				Files.delete(dataFile);
-				// continue;
+//				System.out.println("deleting file:" + dataFile.toString());
+//				Files.delete(dataFile);
+				System.out.println("File exists, no rewrite!->" + dataFile.toString());
+				continue;
 			}
 
 			IETFDataDownloader downloader = ETFDataDownloaderFactory.getYahooDownloader();

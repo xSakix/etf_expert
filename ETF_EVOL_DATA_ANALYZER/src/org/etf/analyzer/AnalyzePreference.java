@@ -216,7 +216,7 @@ public class AnalyzePreference
     private static void analyzeListOfLogFiles(File analyzedData,
 	    List<Path> expData)
     {
-	Map<String, Integer> holdMap = new HashMap<>();
+	Map<String, Float> holdMap = new HashMap<>();
 	Map<Integer, Map<String, Float>> holder = new HashMap<>();
 	Map<Integer, Map<String, AtomicInteger>> counterHolder = new HashMap<>();
 
@@ -251,7 +251,7 @@ public class AnalyzePreference
 	}
 
 	keySet.forEach(key -> {
-	    int holding = holdMap.get(key) == null ? 0 : holdMap.get(key);
+	    float holding = holdMap.get(key) == null ? 0 : holdMap.get(key);
 	    String row = key + ";"
 		    + holder.get(0).get(key) + ";"
 		    + holding + ";" + "http://www.etf.com/" + key
@@ -270,7 +270,7 @@ public class AnalyzePreference
 	});
     }
 
-    private static void extractPreferenceMaps(Map<String, Integer> holdMap,
+    private static void extractPreferenceMaps(Map<String, Float> holdMap,
 	    Map<Integer, Map<String, Float>> holder,
 	    Map<Integer, Map<String, AtomicInteger>> counterHolder, Path p)
 	    throws UnsupportedEncodingException, IOException
@@ -331,7 +331,7 @@ public class AnalyzePreference
 	    Arrays.asList(splitHold).forEach(held -> {
 		String[] parts = held.split("=");
 		String value = parts[1];
-		Integer holdVal = Integer.valueOf(value);
+		Float holdVal = Float.valueOf(value);
 		String key = parts[0];
 		if (holdMap.containsKey(key))
 		{

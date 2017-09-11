@@ -53,11 +53,11 @@ public abstract class AbstractPreferenceUnit implements PreferenceUnit {
 
 	private void init() {
 		for (int i = 0; i < 3; i++) {
-			character[i] = Uniform.staticNextFloatFromTo(0.0f, 1.0f);
+			character[i] = 0.01f;
 		}
 		for (int i = 0; i < preference.length; i++) {
 			// preference[i] = Uniform.staticNextFloatFromTo(0.0f, 0.5f);
-			preference[i] = 0.5f;
+			preference[i] = 0.01f;
 			// character[i] = 0.5d;
 		}
 

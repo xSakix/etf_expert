@@ -7,22 +7,23 @@
 #include <limits.h>
 #include <sys/stat.h>
 
-#define MAX_ETF_LENGTH 1414
+#define MAX_ETF_LENGTH 1300
 #define CHARACTER_LENGTH 4
 #define BUY_INDEX 0
 #define SELL_INDEX 1
 #define HOLD_INDEX 2
 #define ANIMAL_SPIRIT_INDEX 3
-#define MAX_UNITS 1000
-//#define MAX_UNITS 1000
+#define MAX_UNITS 10000
 #define INIT_CASH 300.0f
 #define INVESTMENT 300.0f
 #define DIR_NAME "c:\\downloaded_data\\USD\\"
-#define MAX_DAYS 9000
+#define MAX_DAYS 8964
 #define START "1993-01-29"
 #define END "2017-06-22"
 #define MODIFIER 0.01f
 #define MAX_ITER 100
+#define H_SIZE MAX_DAYS*30
+#define TRANSACTION_COST 4.0f
 
 typedef struct _unit {
 	int ID;
@@ -30,6 +31,8 @@ typedef struct _unit {
 	float *character;
 	float cash;
 	int *portfolio;
+	char *history;
+	int h_size;
 } *unit;
 
 float uniform_distribution(float M, float N) {
@@ -46,7 +49,7 @@ int random_at_most(int max) {
 
 	int x;
 	do {
-		x = random();
+		x = rand();
 	}
 	// This is carefully written not to overflow
 	while (num_rand - defect <= (unsigned int)x);
@@ -70,7 +73,7 @@ void init_unit(unit u, int id) {
 	for (int i = 0; i < CHARACTER_LENGTH; i++) {
 		u->character[i] = uniform_distribution(0.0f, 0.99f);
 	}
-	u->character[ANIMAL_SPIRIT_INDEX] = uniform_distribution(0.0f, 0.1f);
+	//u->character[ANIMAL_SPIRIT_INDEX] = uniform_distribution(0.0f, 0.05f);
 }
 
 static void _mkdir(const char *dir) {
@@ -86,9 +89,11 @@ static void _mkdir(const char *dir) {
 		if (*p == '/') {
 			*p = 0;
 			mkdir(tmp, S_IRWXU);
+			//mkdir(tmp);
 			*p = '/';
 		}
 	mkdir(tmp, S_IRWXU);
+	//mkdir(tmp);
 }
 
 void log_unit(unit u, char **etf_names, char *dirpath) {
@@ -96,12 +101,18 @@ void log_unit(unit u, char **etf_names, char *dirpath) {
 	//FILE *fopen( const char * filename, const char * mode );
 
 	char log_file[PATH_MAX];
+	char action_file[PATH_MAX];
 	sprintf(log_file, "%s/%d_history.log", dirpath, u->ID);
+	sprintf(action_file, "%s/%d_action.log", dirpath, u->ID);
 	FILE *log = fopen(log_file, "a+");
+	FILE *action_log = fopen(action_file, "a+");
 
-	if (log == NULL)
+	if (log == NULL || action_log == NULL)
 		exit(EXIT_FAILURE);
 
+	fputs(u->history, action_log);
+
+	fclose(action_log);
 	//fputs(const char *s, FILE *fp);
 
 	char buffer[80];
@@ -154,7 +165,64 @@ float value_of_etf(int day, int etf_index, float **values) {
 	return val;
 }
 
-void do_buy_action(int day, unit u, float **values) {
+float compute_value(int day, unit u, float **values) {
+	float sum = u->cash;
+
+	for (int i = 0; i < MAX_ETF_LENGTH; i++) {
+		if (u->portfolio[i] == 0)
+			continue;
+
+		float val = value_of_etf(day, i, values);
+		int shares = u->portfolio[i];
+		float ssum = (float)(val*shares);
+		sum += ssum;
+	}
+
+	return sum;
+}
+
+
+void add_history(unit u, char *history) {
+
+	//printf("Adding: %s", history);
+
+	if (u->history == NULL)
+	{
+		//printf("Adding history as malloc\n");
+		u->history = malloc(H_SIZE * sizeof(char));
+		u->h_size = H_SIZE;
+		strcpy(u->history, history);
+	}
+	else
+	{
+		int len = strlen(u->history) + strlen(history);
+		//printf("Adding history as realloc from size(%d) to size(%d)\n", strlen(u->history),len);
+		//printf("Original history:%s", u->history);
+
+		if (len < u->h_size) {
+			//printf("len(%d) < %d\n", len,u->h_size);
+			sprintf(u->history, "%s%s", u->history, history);
+		}
+		else {
+			printf("len(%d) > %d\n : realocating %d", len, u->h_size, 2 * u->h_size);
+
+			u->h_size = u->h_size * 2;
+
+			char* tmp = realloc(u->history, u->h_size);
+			if (tmp == NULL) {
+				printf("ERROR while resizing history\n");
+			}
+			else {
+				u->history = tmp;
+				sprintf(u->history, "%s%s", u->history, history);
+			}
+		}
+	}
+
+	//printf("History: %s", u->history);
+}
+
+void do_buy_action(int day, unit u, float **values, char **names, float choice) {
 	int etf_index = random_at_most(MAX_ETF_LENGTH);
 	float prob = uniform_distribution(0.0f, 0.99f);
 	if (u->etfs_pref[etf_index] >= prob) {
@@ -172,16 +240,21 @@ void do_buy_action(int day, unit u, float **values) {
 			return;
 		}
 
+		u->cash -= TRANSACTION_COST;
 		int shares = (int)(u->cash / val);
-		u->cash -= (float)(shares*val);
+		float cost = (float)(shares*val);
+		u->cash -= cost;
 		u->portfolio[etf_index] += shares;
 
-		//printf("unit[%d], B, %d,%f, P[%d]=%d,Pref[%d]=%f\n",u->ID,shares,val,etf_index,u->portfolio[etf_index],etf_index,u->etfs_pref[etf_index]);
+		char history[80];
+		float nav = compute_value(day, u, values);
+		sprintf(history, "%d,B,%d,%s,%.2f,%f\n", day, shares, names[etf_index], val, nav);
 
+		add_history(u, history);
 	}
 }
 
-void do_sell_action(int day, unit u, float **values) {
+void do_sell_action(int day, unit u, float **values, char **names, float choice) {
 	int etf_index = random_at_most(MAX_ETF_LENGTH);
 	if (u->portfolio[etf_index] == 0) {
 		return;
@@ -194,97 +267,40 @@ void do_sell_action(int day, unit u, float **values) {
 			return;
 		}
 		int shares = u->portfolio[etf_index];
-		u->cash += (float)(shares*val);
+		float cost = (float)(shares*val);
+		u->cash += cost;
+		u->cash -= TRANSACTION_COST;
 		u->portfolio[etf_index] = 0;
-		//printf("unit[%d], S, %d,%f, P[%d]=%d,Pref[%d]=%f\n",u->ID,shares,val,etf_index,u->portfolio[etf_index],etf_index,u->etfs_pref[etf_index]);
+
+		char history[80];
+		float nav = compute_value(day, u, values);
+		sprintf(history, "%d,S,%d,%s,%.2f,%f\n", day, shares, names[etf_index], val, nav);
+		add_history(u, history);
+
 	}
 
 }
 
-void sell_all_shares(int day, unit u, float **values) {
+void sell_all_shares(int day, unit u, float **values, char **names, float choice) {
 
 	for (int i = 0; i < MAX_ETF_LENGTH; i++) {
 		if (u->portfolio[i] > 0) {
 			float val = value_of_etf(day, i, values);
 			int shares = u->portfolio[i];
-			u->cash += (float)(shares*val);
+			float cost = (float)(shares*val);
+			u->cash -= TRANSACTION_COST;
+			u->cash += cost;
 			u->portfolio[i] = 0;
+			char history[80];
+			float nav = compute_value(day, u, values);
+			sprintf(history, "%d,AS,%d,%s,%.2f,%f\n", day, shares, names[i], val, nav);
+			add_history(u, history);
+
 		}
 	}
 }
 
-int best_index_present(int best_index, int *best)
-{
-	for (int i = 0; i < 10; i++) {
-		if (best[i] == best_index)
-			return 1;
-	}
-
-	return 0;
-
-}
-
-void get_ten_best(unit u, int *best) {
-	memset(best, -1, 10);
-
-	int index = 0;
-
-	while (index < 10)
-	{
-
-		int best_index = 0;
-		while (best_index_present(best_index, best)) {
-			best_index++;
-		}
-		float prefs = 0.5f;
-
-		for (int i = 0; i < MAX_ETF_LENGTH; i++) {
-			if (u->etfs_pref[i] > prefs && !best_index_present(i, best)) {
-				prefs = u->etfs_pref[i];
-				best_index = i;
-			}
-		}
-		//printf("Unit[%d] found etf[%d]\n", u->ID, best_index);
-		best[index] = best_index;
-		index++;
-	}
-}
-
-void buy_animal_action_from_ten_best(int day, unit u, float **values) {
-
-	int* best = malloc(10 * sizeof(int));
-	//printf("Unit[%d] looking for best etf\n", u->ID);
-	get_ten_best(u, best);
-	//printf("Unit[%d] found best etf\n", u->ID);
-
-	for (int i = 0; i < 10; i++) {
-
-		int etf_index = best[i];
-		if (etf_index == -1)
-		{
-			continue;
-		}
-
-
-		float val = value_of_etf(day, etf_index, values);
-		if ((int)val == 0) {
-			continue;
-		}
-		if (val > u->cash) {
-			continue;
-		}
-
-		int shares = (int)(u->cash / val);
-		u->cash -= (float)(shares*val);
-		u->portfolio[etf_index] += shares;
-	}
-	//printf("Unit[%d] animal spirit buy inner nearly DONE.\n", u->ID);
-	free(best);
-	//printf("Unit[%d] animal spirit buy inner DONE.\n", u->ID);
-}
-
-
-void do_buy_action_animal(int day, unit u, float **values) {
+void do_buy_action_animal(int day, unit u, float **values, char **names, float choice) {
 	int etf_index = random_at_most(MAX_ETF_LENGTH);
 	float calc = (float)u->etfs_pref[etf_index] + MODIFIER;
 	if (calc < 0.99f) {
@@ -299,24 +315,29 @@ void do_buy_action_animal(int day, unit u, float **values) {
 		return;
 	}
 
+	u->cash -= TRANSACTION_COST;
 	int shares = (int)(u->cash / val);
-	u->cash -= (float)(shares*val);
+	float cost = (float)(shares*val);
+	u->cash -= cost;
 	u->portfolio[etf_index] += shares;
 
+	float nav = compute_value(day, u, values);
+
+	char history[80];
+	sprintf(history, "%d,AB,%d,%s,%.2f,%.2f\n", day, shares, names[etf_index], val, nav);
+	add_history(u, history);
 
 }
 
-void oneStep(int day, unit *population, float **values) {
-
+void oneStep(int day, unit *population, float **values, char **etf_names) {
 
 	for (int i = 0; i < MAX_UNITS; i++) {
 		float choice = uniform_distribution(0.0f, 0.99f);
 		unit u = population[i];
 
 		if (u->character[ANIMAL_SPIRIT_INDEX] >= choice) {
-			sell_all_shares(day, u, values);
-			do_buy_action_animal(day, u, values);
-
+			sell_all_shares(day, u, values, etf_names, choice);
+			//do_buy_action_animal(day, u, values, etf_names, choice);
 			continue;
 		}
 
@@ -324,24 +345,32 @@ void oneStep(int day, unit *population, float **values) {
 			continue;
 		}
 		if (u->character[BUY_INDEX] >= choice) {
-			do_buy_action(day, u, values);
+			do_buy_action(day, u, values, etf_names, choice);
 		}
 		if (u->character[SELL_INDEX] >= choice) {
-			do_sell_action(day, u, values);
+			do_sell_action(day, u, values, etf_names, choice);
 		}
 	}
 }
 
-
-
 time_t get_time(char *time_details) {
 	struct tm tm;
 	memset(&tm, 0, sizeof(struct tm));
-	strptime(time_details, "%Y-%m-%d %H:%M:%S", &tm);
+	int year, month, day, hour, minute, second;
+	//strptime(time_details, "%Y-%m-%d %H:%M:%S", &tm);
+	sscanf(time_details, "%d-%d-%d", &year, &month, &day);
+	tm.tm_isdst = -1;
+	tm.tm_year = year - 1900;
+	tm.tm_mon = month - 1;
+	tm.tm_mday = day;
+	tm.tm_hour = hour;
+	tm.tm_min = minute;
+	tm.tm_sec = second;
+
 	return mktime(&tm);
 }
 
-float put_etf_value(int day, int etf_index, float **values) 
+float put_etf_value(int day, int etf_index, float **values)
 {
 	//hladam hodnotu
 	//najskor ju hladam v minulosti
@@ -361,7 +390,7 @@ float put_etf_value(int day, int etf_index, float **values)
 
 }
 
-void normalize_etf_values(float **values) 
+void normalize_etf_values(float **values)
 {
 	for (int day = 0; day < MAX_DAYS; day++) {
 		for (int etf_index = 0; etf_index < MAX_ETF_LENGTH; etf_index++) {
@@ -380,14 +409,16 @@ void load_etf_values(float **values, char **etf_names) {
 	time_t start = get_time(START);
 
 	if ((dir = opendir(DIR_NAME)) != NULL) {
-		/* print all the files and directories within directory */
+
 		int etf_index = 0;
+
 		while ((ent = readdir(dir)) != NULL) {
 			if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
 				continue;
 			}
 
-			char etf_name[strlen(ent->d_name) - 3];
+			int etf_name_len = strlen(ent->d_name) - 3;
+			char *etf_name = malloc(etf_name_len * sizeof(char));
 			memcpy(etf_name, ent->d_name, strlen(ent->d_name) - 4);
 			etf_name[strlen(ent->d_name) - 4] = '\0';
 
@@ -408,15 +439,15 @@ void load_etf_values(float **values, char **etf_names) {
 			if (file == NULL)
 				exit(EXIT_FAILURE);
 
-			char * line = NULL;
-			size_t len = 0;
-			ssize_t read;
+			char line[80];
 
-			while ((read = getline(&line, &len, file)) != -1) {
+			while (fgets(line, 80, file) != NULL)
+			{
 				char *token = strtok(line, ",");
 				int count = 0;
 				int index = 0;
-				while (token) {
+				while (token)
+				{
 					if (count == 0) {
 						//date
 						time_t cur = get_time(token);
@@ -426,23 +457,21 @@ void load_etf_values(float **values, char **etf_names) {
 					else {
 						//float
 						float val = atof(token);
-						//printf("values[%d][%d]=%f\n",index,etf_index,val);
+						//printf("values[%d][%d]=%f\n", index, etf_index, val);
 						values[index][etf_index] = val;
-						//printf("Values setting done for values[%d][%d]=%f\n",index,etf_index,val);
+						//printf("Values setting done for values[%d][%d]=%f\n", index, etf_index, val);
 					}
 					token = strtok(NULL, " ");
 				}
 
 			}
 			fclose(file);
-			if (line) {
-				free(line);
-			}
-			//printf ("file processed: %s\n", filename);
+			//printf("file processed: %s\n", filename);
 			if (filename) {
 				free(filename);
 			}
 			etf_index++;
+			free(etf_name);
 		}
 
 		closedir(dir);
@@ -460,20 +489,6 @@ void load_etf_values(float **values, char **etf_names) {
 	printf("[DONE]Loading ETF values...\n");
 }
 
-float compute_value(int day, unit u, float **values) {
-	float sum = u->cash;
-	for (int i = 0; i < MAX_ETF_LENGTH; i++) {
-		if (u->portfolio[i] == 0)
-			continue;
-
-		float val = value_of_etf(day, i, values);
-		int shares = u->portfolio[i];
-		float ssum = (float)(val*shares);
-		sum += ssum;
-	}
-
-	return sum;
-}
 
 void get_time_string(char *buffer) {
 	time_t rawtime;
@@ -529,8 +544,8 @@ int main()
 					population[j]->cash += INVESTMENT;
 				}
 			}
-			printf("Starting DAY[%d][%d]\n", iter,i);
-			oneStep(i, population, values);
+			printf("Starting DAY[%d][%d]\n", iter, i);
+			oneStep(i, population, values, etf_names);
 		}
 
 		float maxSum = 0.0f;
@@ -571,11 +586,17 @@ int main()
 				u->portfolio[j] = 0;
 			}
 			u->cash = INIT_CASH;
+			free(u->history);
+			u->history = NULL;
 		}
 
 	}
 
 	for (int i = 0; i < MAX_UNITS; i++) {
+		free(population[i]->character);
+		free(population[i]->etfs_pref);
+		free(population[i]->portfolio);
+		free(population[i]->history);
 		free(population[i]);
 	}
 	free(population);

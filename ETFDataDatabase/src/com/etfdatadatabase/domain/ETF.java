@@ -1,17 +1,26 @@
 package com.etfdatadatabase.domain;
 
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class ETF
 {
 
+    public static final int NUM_OF_DAYS = 8936;
     private String ticket;
     private List<NavData> navDataList;
     private List<NavData> dividendList;
+    private float[] normalized = null;
+    public Integer startIndex = null;
+
+    // 1993-01-29
+    // 2017-07-14
 
     public ETF(String ticket2)
     {
@@ -77,13 +86,55 @@ public class ETF
 	});
     }
 
+    public float[] normalised()
+    {
+	if (normalized == null)
+	{
+	    normalized = new float[NUM_OF_DAYS];
+	    
+	    Calendar start = Calendar.getInstance();
+	    start.clear();
+	    start.set(Calendar.YEAR, 1993);
+	    start.set(Calendar.MONTH, 0);
+	    start.set(Calendar.DAY_OF_MONTH, 29);
+	    float last = 0.0f;
+	    Map<Integer,Float> values = new Hashtable<>(NUM_OF_DAYS); 
+	    for(NavData navData : navDataList){
+		Calendar actual = Calendar.getInstance();
+		actual.clear();
+		actual.setTime(navData.getDate());
+		actual.clear(Calendar.MILLISECOND);
+		actual.clear(Calendar.SECOND);
+		actual.clear(Calendar.MINUTE);
+		actual.clear(Calendar.HOUR);
+		values.put(actual.hashCode(), navData.getNav());
+	    }
+	    for(int i = 0; i < NUM_OF_DAYS;i++){
+		if(values.containsKey(start.hashCode())){
+		    if(startIndex == null){
+			startIndex = i;
+		    }
+		    last = values.get(start.hashCode());
+		    normalized[i] = last;		    
+		}else{
+		    normalized[i] = last;
+		}
+		start.add(Calendar.DAY_OF_MONTH, 1);
+	    }
+	}
+
+	return this.normalized;
+    }
+
     @Override
     public int hashCode()
     {
 	final int prime = 31;
 	int result = 1;
-	result = prime * result + ((dividendList == null) ? 0 : dividendList.hashCode());
-	result = prime * result + ((navDataList == null) ? 0 : navDataList.hashCode());
+	result = prime * result
+		+ ((dividendList == null) ? 0 : dividendList.hashCode());
+	result = prime * result
+		+ ((navDataList == null) ? 0 : navDataList.hashCode());
 	result = prime * result + ((ticket == null) ? 0 : ticket.hashCode());
 	return result;
     }
@@ -132,9 +183,9 @@ public class ETF
 	    builder.append(x.toString());
 	    builder.append('\n');
 	});
-	
+
 	builder.append("dividend:\n");
-	
+
 	this.dividendList.stream().forEach(x -> {
 	    builder.append(x.toString());
 	    builder.append('\n');

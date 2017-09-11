@@ -8,13 +8,13 @@ import org.eft.evol.stats.UnitAction;
 import cern.jet.math.Arithmetic;
 import cern.jet.random.Uniform;
 
-public class UnitChoosyImpl extends AbstractUnit implements Unit {
+public class UnitGAmpl extends AbstractUnit implements Unit {
 
-	public UnitChoosyImpl(int ETF_SIZE, int index) {
+	public UnitGAmpl(int ETF_SIZE, int index) {
 		super(ETF_SIZE, index);
 	}
 
-	public UnitChoosyImpl(int index, byte[] character, byte[] preference) {
+	public UnitGAmpl(int index, byte[] character, byte[] preference) {
 		super(index, character, preference);
 	}
 
@@ -142,24 +142,24 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 
 		byte[] nPreference = crossoverPreference(other, preference, ActionType.BUY);
 
-		return new UnitChoosyImpl(UnitSequenceGenerator.getID(), nCharacter, nPreference);
+		return new UnitGAmpl(UnitSequenceGenerator.getID(), nCharacter, nPreference);
 	}
 
 	@Override
 	public String toString() {
-		return "UnitChoosyImpl " + super.toString();
+		return "UnitGAImpl " + super.toString();
 	}
 
 	@Override
 	protected String currentStateString() {
-		return "UnitChoosyImpl " + super.currentStateString();
+		return "UnitGAImpl " + super.currentStateString();
 	}
 
 	@Override
 	public String getDir(int iteration) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(iteration);
-		builder.append("_UnitChoosyImpl");
+		builder.append("_UnitGAImpl");
 		return builder.toString();
 	}
 
@@ -169,7 +169,6 @@ public class UnitChoosyImpl extends AbstractUnit implements Unit {
 			if (etfs[i] > 0 && dividends[cycle][i] > 0.0f) {
 				float dividends_payed = (float) etfs[i] * dividends[cycle][i];
 				this.cash += dividends_payed;
-				// System.out.println("paying dividends:"+dividends_payed);
 			}
 		}
 	}

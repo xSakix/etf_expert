@@ -46,6 +46,8 @@ public interface Unit {
 	byte[] getCharacter();
 
 	byte[] getBuyPreferenceMap();
+	
+	public int[] getEtfs();
 
 	float getInvesment();
 

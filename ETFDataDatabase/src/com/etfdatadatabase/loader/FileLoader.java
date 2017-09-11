@@ -11,18 +11,15 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.etfdatadatabase.domain.ETF;
 import com.etfdatadatabase.resources.AppProperties;
@@ -40,7 +37,8 @@ public class FileLoader
 	    throw new IOException(directory.toString() + " not found");
 	}
 
-	List<File> files = Files.list(directory).filter(p -> p.toString().endsWith(".csv")).map(p -> p.toFile())
+	List<File> files = Files.list(directory)
+		.filter(p -> p.toString().endsWith(".csv")).map(p -> p.toFile())
 		.collect(Collectors.toList());
 
 	Collections.sort(files, new Comparator<File>()
@@ -65,7 +63,8 @@ public class FileLoader
 	    {
 		String ticket = p.getName().toString().replace(".csv", "");
 		ETF etfData = loadETFData(ticket);
-		if (etfData != null && etfData.getNavDataList() != null && !etfData.getNavDataList().isEmpty())
+		if (etfData != null && etfData.getNavDataList() != null
+			&& !etfData.getNavDataList().isEmpty())
 		    etfs.add(etfData);
 	    } catch (IOException e)
 	    {
@@ -88,13 +87,14 @@ public class FileLoader
 	}
 
 	Path file = Paths.get(directory.toString(), ticket + ".csv");
-	Path divFile = Paths.get(directory.toString() + "_div", ticket + ".csv");
+	Path divFile = Paths.get(directory.toString() + "_div",
+		ticket + ".csv");
 
 	File inputDivF = null;
 
 	if (Files.exists(divFile))
 	{
-	    //System.out.println("found dividend:" + divFile);
+	    // System.out.println("found dividend:" + divFile);
 	    inputDivF = divFile.toFile();
 	}
 
@@ -111,46 +111,79 @@ public class FileLoader
 	 * 2016); calTo.set(Calendar.MONTH, 11);
 	 * calTo.set(Calendar.DAY_OF_MONTH,31);
 	 */
+	BufferedReader bufferedReader = null;
+	try
+	{
+	    bufferedReader = new BufferedReader(new InputStreamReader(inputFS));
 
-	BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputFS));
+	    bufferedReader.lines().forEach(line -> {
 
-	bufferedReader.lines().forEach(line -> {
-
-	    String[] parts = line.split(",");
-	    if (parts[1] != null && !"null".equals(parts[1]))
-	    {
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-		LocalDate dateTime = LocalDate.parse(parts[0], formatter);
-		Date datePart = Date.from(dateTime.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-		if (datePart.after(calFrom
-			.getTime()) /* && datePart.before(calTo.getTime()) */)
-		{
-		    etf.addNavData(Float.valueOf(parts[1]), datePart);
-		}
+		readETFData(etf, calFrom, line);
+	    });
+	    if(bufferedReader != null){
+		bufferedReader.close();
 	    }
-	});
 
-	if(inputDivF != null ){
-        	bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(inputDivF)));
-        
-        	bufferedReader.lines().forEach(line -> {
-        
-        	    String[] parts = line.split(",");
-        	    if (parts[1] != null && !"null".equals(parts[1]))
-        	    {
-        		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        		LocalDate dateTime = LocalDate.parse(parts[0], formatter);
-        		Date datePart = Date.from(dateTime.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant());
-        		if (datePart.after(calFrom
-        			.getTime()) /* && datePart.before(calTo.getTime()) */)
-        		{
-        		    etf.addDividendData(Float.valueOf(parts[1]), datePart);
-        		}
-        	    }
-        	});
+	    if (inputDivF != null)
+	    {
+		bufferedReader = new BufferedReader(
+			new InputStreamReader(new FileInputStream(inputDivF)));
+
+		bufferedReader.lines().forEach(line -> {
+
+		    readETFDividendData(etf, calFrom, line);
+		});
+	    }
+	} finally
+	{
+	    if (bufferedReader != null)
+	    {
+		bufferedReader.close();
+	    }
 	}
 
 	return etf;
+    }
+
+    private static void readETFDividendData(ETF etf, Calendar calFrom,
+	    String line)
+    {
+	String[] parts = line.split(",");
+	if (parts[1] != null && !"null".equals(parts[1]))
+	{
+	    DateTimeFormatter formatter = DateTimeFormatter
+		    .ofPattern("yyyy-MM-dd");
+	    LocalDate dateTime = LocalDate.parse(parts[0], formatter);
+	    Date datePart = Date.from(dateTime.atStartOfDay()
+		    .atZone(ZoneId.systemDefault()).toInstant());
+	    if (datePart.after(
+		    calFrom.getTime()) /*
+				        * && datePart.before( calTo.getTime())
+				        */)
+	    {
+		etf.addDividendData(Float.valueOf(parts[1]), datePart);
+	    }
+	}
+    }
+
+    private static void readETFData(ETF etf, Calendar calFrom, String line)
+    {
+	String[] parts = line.split(",");
+	if (parts[1] != null && !"null".equals(parts[1]))
+	{
+	    DateTimeFormatter formatter = DateTimeFormatter
+		    .ofPattern("yyyy-MM-dd");
+	    LocalDate dateTime = LocalDate.parse(parts[0], formatter);
+	    Date datePart = Date.from(dateTime.atStartOfDay()
+		    .atZone(ZoneId.systemDefault()).toInstant());
+	    if (datePart.after(
+		    calFrom.getTime()) /*
+				        * && datePart.before(calTo.getTime())
+				        */)
+	    {
+		etf.addNavData(Float.valueOf(parts[1]), datePart);
+	    }
+	}
     }
 
     public static void main(String[] args) throws IOException

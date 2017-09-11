@@ -1,5 +1,7 @@
 package org.eft.evol.model;
 
+import java.util.Arrays;
+
 public class ETFMap {
 
 	private String[] mapETFToIndex;
@@ -44,5 +46,17 @@ public class ETFMap {
 			return null;
 		}
 		return mapETFToIndex[index];
+	}
+
+	public void removeIndex(int index) {
+		String[] copy = Arrays.copyOf(mapETFToIndex, mapETFToIndex.length);
+		mapETFToIndex = new String[mapETFToIndex.length-1];
+		for(int i = 0; i < mapETFToIndex.length;i++){
+			if(i < index){
+				mapETFToIndex[i] = copy[i];
+			}else{
+				mapETFToIndex[i] = copy[i+1];
+			}			
+		}
 	}
 }

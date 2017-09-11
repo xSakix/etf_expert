@@ -19,7 +19,7 @@ import java.util.Map;
 import org.eft.evol.model.ETFMap;
 import org.eft.evol.model.SimpleUnit;
 import org.eft.evol.model.Unit;
-import org.eft.evol.model.UnitChoosyImpl;
+import org.eft.evol.model.UnitGAmpl;
 import org.eft.evol.model.UnitSequenceGenerator;
 import org.etf.provider.ConfigProvider;
 import org.joda.time.DateTime;
@@ -130,9 +130,10 @@ public class SimpleMain
 		    population, winner_size > 10 ? 10 : winner_size);
 
 	    results.add(it, winners.get(0).netAssetValue(cycle - 1, navValues));
-	    
-	    final int day = cycle-1;
-	    winners.parallelStream().forEach(unit -> unit.logToFile(iteration,day,navValues));
+
+	    final int day = cycle - 1;
+	    winners.parallelStream()
+		    .forEach(unit -> unit.logToFile(iteration, day, navValues));
 
 	    // TODO: uz mam winner-a, mozno pouzit jeho??
 	    crossoverPopulation(navValues, population, winners, it, cycle);
@@ -210,7 +211,7 @@ public class SimpleMain
 	builder.append("]Number of mutated:");
 	builder.append(mutated);
 	appendMessage(builder.toString());
-	
+
     }
 
     private static void initPopulation(int eftSize, List<SimpleUnit> population)
@@ -367,7 +368,7 @@ public class SimpleMain
 	System.out.println("Max available[" + iteration + "]:"
 		+ Runtime.getRuntime().maxMemory());
     }
-    
+
     private static void logResultsToFile(List<Float> results)
     {
 	if (!Files.exists(RESULTS_CSV.toPath()))

@@ -48,6 +48,10 @@ public abstract class AbstractUnit implements Unit {
 		init();
 		initState();
 	}
+	
+	public int[] getEtfs() {
+		return etfs;
+	}
 
 	public AbstractUnit(int index, byte[] character, byte[] buyPreference) {
 		this.character = Arrays.copyOf(character, character.length);

@@ -1,5 +1,5 @@
-package org.eft.evol;
 
+package org.eft.evol;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +19,7 @@ import java.util.Map;
 
 import org.eft.evol.model.ETFMap;
 import org.eft.evol.model.Unit;
-import org.eft.evol.model.UnitChoosyImpl;
+import org.eft.evol.model.UnitGAmpl;
 import org.eft.evol.model.UnitSequenceGenerator;
 import org.etf.provider.ConfigProvider;
 import org.joda.time.DateTime;
@@ -30,25 +30,65 @@ import com.etfdatadatabase.loader.FileLoader;
 
 import cern.jet.random.Uniform;
 
-public class Main
+public class GAUnitsMain
 {
 
     private static final float INVESTMENT = 300.0f;
-    private static final int POPULATION_SIZE = 1000;
+    private static final int POPULATION_SIZE = 100;
     private static final float MUTATE = 0.05f;
-    private static final int ITER_MAX = 10;
+    private static final int ITER_MAX = 100;
     private static final int INVESTMENT_PERIOD = 30;
     // private static final int REBALANCE_PERIOD = 90;
+    private static final int NUM_CHOSEN = 20;
 
-    private static final File LOG = new File(
-	    ConfigProvider.DIR + "simulation.log");
-    private static final File RESULTS_CSV = new File(
-	    ConfigProvider.DIR + ConfigProvider.DATE_STR + "_results.csv");
+    private static final File LOG = new File(getSimulationFileName());
+    private File RESULTS_CSV = new File(getResultCSVFileName(0));
+    private List<ETF> loadedETFS;
+    private float[][] navValues;
+    private float[][] dividends;
+    private List<Unit> population = new ArrayList<>(POPULATION_SIZE);
+    private List<Float> results = new ArrayList<Float>();
+    private List<String> chosenETFs = new ArrayList<>(NUM_CHOSEN);
+    private int simulationDays;
+
+    private static String getSimulationFileName()
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append(ConfigProvider.DIR);
+	builder.append("simulation.log");
+
+	return builder.toString();
+    }
+
+    private String getResultCSVFileName(int num)
+    {
+	StringBuilder builder = new StringBuilder();
+
+	builder.append(ConfigProvider.DIR);
+	builder.append(ConfigProvider.DATE_STR);
+	if (num == 0)
+	{
+	    builder.append("_results.csv");
+	} else
+	{
+	    builder.append(String.format("_results_%d.csv", num));
+
+	}
+
+	return builder.toString();
+    }
 
     public static void main(String[] args) throws IOException
     {
+	GAUnitsMain gaUnitsMain = new GAUnitsMain();
+	gaUnitsMain.run(args);
+    }
 
-	List<ETF> loadedETFS = FileLoader.loadAllUSD(0);
+    public void run(String[] args) throws IOException
+    {
+
+	this.loadedETFS = FileLoader.loadAllUSD(0);
 
 	for (int i = 0; i < loadedETFS.size(); i++)
 	{
@@ -67,9 +107,10 @@ public class Main
 	    }
 	}).get();
 
-	int maxSize = maxETFByRange.getNavDataList().size();
+	this.simulationDays = maxETFByRange.getNavDataList().size();
 	Date start = maxETFByRange.getNavDataList().get(0).getDate();
-	Date finish = maxETFByRange.getNavDataList().get(maxSize - 1).getDate();
+	Date finish = maxETFByRange.getNavDataList()
+		.get(this.simulationDays - 1).getDate();
 	System.out.println(
 		"Starting at " + start + " and finishing at " + finish);
 
@@ -79,32 +120,32 @@ public class Main
 	}
 
 	appendMessage("Loaded " + loadedETFS.size() + " etfs.");
-	appendMessage("Rate of mutation: "+MUTATE);
-	appendMessage("Iter max:"+ITER_MAX);
-	appendMessage("Investment period:"+INVESTMENT_PERIOD);
-	appendMessage("Investment money:"+INVESTMENT);
-	appendMessage("Population size:"+POPULATION_SIZE);
+	appendMessage("Rate of mutation: " + MUTATE);
+	appendMessage("Iter max:" + ITER_MAX);
+	appendMessage("Investment period:" + INVESTMENT_PERIOD);
+	appendMessage("Investment money:" + INVESTMENT);
+	appendMessage("Population size:" + POPULATION_SIZE);
 
-	float[][] navValues = new float[maxSize][loadedETFS.size()];
-	float[][] dividends = new float[maxSize][loadedETFS.size()];
+	navValues = new float[this.simulationDays][loadedETFS.size()];
+	dividends = new float[this.simulationDays][loadedETFS.size()];
 
-	for (int index = 0; index < maxSize; index++)
+	for (int index = 0; index < this.simulationDays; index++)
 	{
-	    navValues[index] = getEtfValueMap(loadedETFS, index, start, false);
-	    dividends[index] = getEtfValueMap(loadedETFS, index, start, true);
+	    navValues[index] = getEtfValueMap(index, start, false);
+	    dividends[index] = getEtfValueMap(index, start, true);
 	}
 
 	int size = loadedETFS.size();
 	loadedETFS.clear();
 	loadedETFS = null;
+	// lamerske uvolnenie pameti:D
+	Runtime.getRuntime().gc();
 
-	experiment(size, maxSize, navValues, dividends, UnitChoosyImpl.class);
-	// experiment(loadedETFS, maxSize, navValues, UnitImpl.class);
-	// experiment(loadedETFS, maxSize, navValues, UnitSigmoidImpl.class);
-	// experiment(loadedETFS, maxSize, navValues, null);
+	experiment(size);
     }
 
-    private static void printMemoryUsage(int iteration)
+    @SuppressWarnings("unused")
+    private void printMemoryUsage(int iteration)
     {
 	System.out.println("Total used[" + iteration + "]:"
 		+ Runtime.getRuntime().totalMemory());
@@ -114,97 +155,143 @@ public class Main
 		+ Runtime.getRuntime().maxMemory());
     }
 
-    private static <T extends Unit> void experiment(int eftSize, int maxSize,
-	    float[][] navValues, float[][] dividends,
-	    Class<UnitChoosyImpl> class1)
+    private void experiment(int etfSize)
     {
-	List<Unit> population = new ArrayList<>(POPULATION_SIZE);
-	List<Float> results = new ArrayList<Float>();
-	initPopulation(eftSize, class1, population);
-	// int iterationsMax = ITER_MAX;
-	int it = 0;
-	appendMessage("Evolution start: " + Calendar.getInstance().getTime());
-	long time = System.currentTimeMillis();
-	// while (it < iterationsMax) {
-	int cycle = 0;
-	while (true)
+	Unit lastWinner = null;
+	int[] etfs = null;
+	while (chosenETFs.size() != NUM_CHOSEN)
 	{
-	    if (it >= ITER_MAX)
+
+	    initPopulation(etfSize);
+	    int it = 0;
+	    appendMessage(
+		    "Evolution start: " + Calendar.getInstance().getTime());
+	    long time = System.currentTimeMillis();
+	    int cycle = 0;
+	    
+	    while (true)
 	    {
-		break;
+		if (it >= ITER_MAX)
+		{
+		    break;
+		}
+
+		appendMessage("Starting iteration[" + it + "]");
+		cycle = 0;
+
+		final int iteration = it;
+		while (population.size() > 1 && cycle < this.simulationDays)
+		{
+		    final int finalCycle = cycle;
+		    population.parallelStream().forEach(
+			    unit -> oneStep(iteration, finalCycle, unit));
+		    cycle++;
+
+		}
+
+		int winner_size = (int) (0.1 * POPULATION_SIZE);
+		List<Unit> winners = getWinners(cycle - 1,
+			winner_size > 10 ? 10 : winner_size);
+
+		lastWinner = winners.get(0);
+		etfs = lastWinner.getEtfs();
+		results.add(it,
+			lastWinner.netAssetValue(cycle - 1, navValues));
+
+		winners.parallelStream()
+			.forEach(unit -> unit.logToFile(iteration));
+
+		// TODO: uz mam winner-a, mozno pouzit jeho??
+		crossoverPopulation(winners, it, cycle);
+		population.addAll(winners);
+
+		it++;
+
+		population.parallelStream().forEach(unit -> {
+		    unit.resetAssets(0);
+		    unit.resetLogs();
+		});
+
+	    }
+	    if(lastWinner == null || etfs == null){
+		throw new RuntimeException("Winner missing!");
 	    }
 	    
-	    appendMessage("Starting iteration[" + it + "]");
-	    cycle = 0;
-
-	    final int iteration = it;
-	    while (population.size() > 1 && cycle < maxSize)
+	    
+	    // hm, asi skusit, ze vyber 10 naj na zaklade pref
+	    // pre ne pozri etf-shares a vyber take co ma naj shares?
+	    // zjednodusene, vyber naj pocet share(pametaj index)
+	    // a pre ne to bacni, ze to je top a basta
+	    int max = 0;
+	    int indexMax = 0;
+	    for (int i = 0; i < etfs.length; i++)
 	    {
-		final int finalCycle = cycle;
-		population.parallelStream().forEach(unit -> oneStep(navValues,
-			dividends, population, iteration, finalCycle, unit));
-		cycle++;
-
-	    }
-
-	    int winner_size = (int) (0.02 * POPULATION_SIZE);
-	    List<Unit> winners = getWinners(cycle - 1, navValues, population,
-		    winner_size > 10 ? 10 : winner_size);
-
-	    results.add(it, winners.get(0).netAssetValue(cycle - 1, navValues));
-
-	    winners.parallelStream().forEach(unit -> unit.logToFile(iteration));
-
-	    // TODO: uz mam winner-a, mozno pouzit jeho??
-	    crossoverPopulation(navValues, population, winners, it, cycle);
-	    population.addAll(winners);
-
-	    it++;
-
-	    population.parallelStream().forEach(unit -> {
-		unit.resetAssets(0);
-		unit.resetLogs();
-	    });
-
-	    printMemoryUsage(it);
-	}
-
-	time = System.currentTimeMillis() - time;
-	appendMessage("Simulation end: " + Calendar.getInstance().getTime());
-	appendMessage("Simulation took: " + time + "[ms]");
-
-	printMemoryUsage(it);
-
-	logResultsToFile(results);
-
-    }
-
-    private static void initPopulation(int eftSize,
-	    Class<UnitChoosyImpl> class1, List<Unit> population)
-    {
-	if (class1 != null)
-	{
-	    for (int i = 0; i < POPULATION_SIZE; i++)
-	    {
-
-		if (UnitChoosyImpl.class.equals(class1))
+		if (etfs[i] > max)
 		{
-		    population.add(new UnitChoosyImpl(eftSize,
-			    UnitSequenceGenerator.getID()));
+		    indexMax = i;
+		    max = etfs[i];
 		}
 	    }
-	} else
-	{
 
-	    for (int i = population.size() - 1; i < POPULATION_SIZE; i++)
+	    chosenETFs.add(ETFMap.getInstance().getEtfName(indexMax));
+	    ETFMap.getInstance().removeIndex(indexMax);
+	    etfSize--;
+
+	    float[][] copyNav = new float[navValues.length][navValues[0].length];
+	    float[][] copyDiv = new float[navValues.length][navValues[0].length];
+	    for (int i = 0; i < navValues.length; i++)
 	    {
-		population.add(new UnitChoosyImpl(eftSize,
-			UnitSequenceGenerator.getID()));
+		copyNav[i] = Arrays.copyOf(navValues[i], navValues[i].length);
+		copyDiv[i] = Arrays.copyOf(dividends[i], dividends[i].length);
 	    }
+	    navValues = new float[this.simulationDays][etfSize];
+	    dividends = new float[this.simulationDays][etfSize];
+
+	    for (int i = 0; i < simulationDays; i++)
+	    {
+		for (int etf_index = 0; etf_index < etfSize; etf_index++)
+		{
+		    if (etf_index < indexMax)
+		    {
+			navValues[i][etf_index] = copyNav[i][etf_index];
+			dividends[i][etf_index] = copyDiv[i][etf_index];
+		    } else
+		    {
+			navValues[i][etf_index] = copyNav[i][etf_index + 1];
+			dividends[i][etf_index] = copyDiv[i][etf_index + 1];
+		    }
+		}
+	    }
+	    
+	    time = System.currentTimeMillis() - time;
+	    appendMessage(
+		    "Simulation end: " + Calendar.getInstance().getTime());
+	    appendMessage("Simulation took: " + time + "[ms]");
+
+	    logResultsToFile(results);
+	    this.population.clear();
+	    this.results.clear();
+	    
+	    RESULTS_CSV = new File(getResultCSVFileName(chosenETFs.size()));
+	}
+	appendMessage("Chosen etf:");
+	for (String etfName : chosenETFs)
+	{
+	    appendMessage(etfName);
+	}
+
+    }
+
+    private void initPopulation(int eftSize)
+    {
+	for (int i = 0; i < POPULATION_SIZE; i++)
+	{
+	    population
+		    .add(new UnitGAmpl(eftSize, UnitSequenceGenerator.getID()));
 	}
     }
 
-    private static void logResultsToFile(List<Float> results)
+    private void logResultsToFile(List<Float> results)
     {
 	if (!Files.exists(RESULTS_CSV.toPath()))
 	{
@@ -240,11 +327,11 @@ public class Main
 
     }
 
-    private static boolean was90PercentReached(int cycle, float[][] etfValueMap,
-	    List<Unit> population)
+    @SuppressWarnings("unused")
+    private boolean was90PercentReached(int cycle)
     {
 
-	List<Unit> winners = getWinners(cycle, etfValueMap, population, 1);
+	List<Unit> winners = getWinners(cycle, 1);
 	if (winners == null || winners.size() == 0)
 	{
 	    appendMessage("Winner[" + cycle + "]: not found!");
@@ -272,13 +359,12 @@ public class Main
 	return false;
     }
 
-    private static void crossoverPopulation(float[][] navValues,
-	    List<Unit> units, List<Unit> winners, int it, int cycle)
+    private void crossoverPopulation(List<Unit> winners, int it, int cycle)
     {
 	Integer mutated = 0;
 	Integer crossover = 0;
-	units.clear();
-	while (units.size() != POPULATION_SIZE - winners.size())
+	population.clear();
+	while (population.size() != POPULATION_SIZE - winners.size())
 	{
 	    int firstChosen = 0;
 	    int secondChosen = 1;
@@ -308,7 +394,7 @@ public class Main
 
 	    newUnit.addCash(first.getInvesment() - Unit.BASE_CASH);
 
-	    units.add(newUnit);
+	    population.add(newUnit);
 	    newUnit.appendHistory(it, cycle, navValues);
 	}
 
@@ -328,54 +414,31 @@ public class Main
 
     }
 
-    private static Unit getUnitImplementation(Unit winner)
-    {
-	// if (winner instanceof UnitChoosyImpl) {
-	// return new UnitChoosyImpl(UnitSequenceGenerator.getID(),
-	// winner.getCharacter(),
-	// winner.getBuyPreferenceMap(), winner.getSellPreferenceMap(),
-	// winner.getHoldPreferenceMap());
-	// } else if (winner instanceof UnitSigmoidImpl) {
-	// return new UnitSigmoidImpl(UnitSequenceGenerator.getID(),
-	// winner.getCharacter(),
-	// winner.getBuyPreferenceMap());
-	// }
-	// return new UnitImpl(UnitSequenceGenerator.getID(),
-	// winner.getCharacter(), winner.getBuyPreferenceMap());
-
-	return new UnitChoosyImpl(UnitSequenceGenerator.getID(),
-		winner.getCharacter(), winner.getBuyPreferenceMap());
-    }
-
-    private static void oneStep(float[][] navValues, float[][] dividends,
-	    List<Unit> units, int it, int cycle, Unit unit)
+    private void oneStep(int it, int cycle, Unit unit)
     {
 	if (cycle > 0 && cycle % INVESTMENT_PERIOD == 0)
 	{
 	    unit.addCash(INVESTMENT);
 	}
 
-	performAction(navValues, it, cycle, unit);
+	performAction(it, cycle, unit);
 
-	calculateDividends(dividends, it, cycle, unit);
+	calculateDividends(it, cycle, unit);
 
 	unit.appendHistory(it, cycle, navValues);
     }
 
-    private static void calculateDividends(float[][] dividends, int it,
-	    int cycle, Unit unit)
+    private void calculateDividends(int it, int cycle, Unit unit)
     {
 	unit.calculateDividends(dividends, cycle);
     }
 
-    private static void performAction(float[][] navValues, int it, int cycle,
-	    Unit unit)
+    private void performAction(int it, int cycle, Unit unit)
     {
 	unit.performAction(navValues, it, cycle);
     }
 
-    private static float[] getEtfValueMap(List<ETF> loadedETFS, int cycle,
-	    Date startDate, boolean dividends)
+    private float[] getEtfValueMap(int cycle, Date startDate, boolean dividends)
     {
 	float[] etfValueMap = new float[loadedETFS.size()];
 	Arrays.fill(etfValueMap, 0.0f);
@@ -423,32 +486,24 @@ public class Main
 	return etfValueMap;
     }
 
-    private static List<Unit> getVictims(int cycle, float[][] etfValueMap,
-	    List<Unit> epoch, int num)
-    {
-	return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Victim);
-    }
-
     private enum ChosenType
     {
 	Winner, Victim
     }
 
-    private static List<Unit> getWinners(int cycle, float[][] etfValueMap,
-	    List<Unit> epoch, int num)
+    private List<Unit> getWinners(int cycle, int num)
     {
-	return getChosen(cycle, etfValueMap, epoch, num, ChosenType.Winner);
+	return getChosen(cycle, num, ChosenType.Winner);
     }
 
-    private static List<Unit> getChosen(int cycle, float[][] etfValueMap,
-	    List<Unit> epoch, int num, ChosenType chosenType)
+    private List<Unit> getChosen(int cycle, int num, ChosenType chosenType)
     {
 	List<Unit> chosenList = new ArrayList<Unit>(num);
 	Map<Float, List<Unit>> map = new HashMap<>(num);
 
-	for (Unit unit : epoch)
+	for (Unit unit : population)
 	{
-	    Float key = Float.valueOf(unit.netAssetValue(cycle, etfValueMap));
+	    Float key = Float.valueOf(unit.netAssetValue(cycle, navValues));
 	    if (map.containsKey(key))
 	    {
 		map.get(key).add(unit);
@@ -493,7 +548,7 @@ public class Main
 	return chosenList;
     }
 
-    public static void appendMessage(String msg)
+    public void appendMessage(String msg)
     {
 	if (!msg.endsWith("\n"))
 	{
