@@ -25,6 +25,7 @@ def main():
 		
 	G_E = []
 	
+	it = 0
 	while True:
 		E = 0.
 		for i in range(len(x)):
@@ -56,10 +57,14 @@ def main():
 		G_E.append(E)
 		
 		if len(G_E) > 2 and G_E[len(G_E)-2] < G_E[len(G_E)-1] or G_E[len(G_E)-1] < 0.001:
-			print('E = '+str(E))
 			break
-		
-	print(w)
+		it = it +1
+		if(it > 10000):
+			break;
+	
+	print('G_E = '+str(G_E[-1]))
+	#print(w)
+	print('Iterations='+str(it))
 	
 	for i in range(len(x)):	
 		x53 = 0.
