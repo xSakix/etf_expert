@@ -1,168 +1,323 @@
-#mlp backprop
+# mlp backprop
+
+
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
+
 
 def sigmoid(x):
-	return 1./(1.+np.exp(-x))
+    return 1./(1.+np.exp(-x))
+
 
 class Node:
 
-	def __init__(self,isinput=False):
-		self.out =0.
-		self.error=0.
-		self.x = None
-		self.isinput = isinput
-
-def forward(x,w,N):
-	number_of_layers = len(N)
-	for layer in range(number_of_layers):
-		# print('-------Layer:'+str(layer)+'---------------')
-		number_of_nodes_current_layer = len(N[layer])
-		for output_node_index in range(number_of_nodes_current_layer):
-			if layer == 0:
-				N[layer][output_node_index].out = x[output_node_index]
-			else:
-				sum =0.
-				number_of_nodes_prev_layer = len(N[layer-1])
-				for input_node_index in range(number_of_nodes_prev_layer):
-					weight = w[layer][output_node_index][input_node_index]
-					input = N[layer-1][input_node_index].out
-					sum += weight* input
-					# print('Summing:w['+str(layer)+']['+str(output_node_index)+']['+str(input_node_index)+']*N['+str(layer-1)+']['+str(input_node_index)+'].out')
-				N[layer][output_node_index].out = sigmoid(sum)
-			# print('N['+str(layer)+']['+str(output_node_index)+'].out='+str(N[layer][output_node_index].out))		
-
-def backward(N,t,w):
-	number_of_layers = len(N)
-	for layer in range(number_of_layers-1,0,-1):
-		# print('-------Layer backtracking:'+str(layer)+'---------------')
-		number_of_nodes_current_layer = len(N[layer])
-		for output_node_index in range(number_of_nodes_current_layer):
-			y = N[layer][output_node_index].out
-			p1 = y*(1-y)
-			# print('p1=N['+str(layer)+']['+str(output_node_index)+'].out*(1-N['+str(layer)+']['+str(output_node_index)+'].out)')
-			if layer == len(N)-1:
-				N[layer][output_node_index].error = p1*(t-y)
-				# print('N['+str(layer)+']['+str(output_node_index)+'].error = p1*(t['+str(index_input)+']-N['+str(layer)+']['+str(output_node_index)+'].out)')
-			else:
-				sum=0.
-				for input_node_index in range(len(N[layer+1])):
-					for output_node_index in range(len(N[layer])):
-						wkh = w[layer+1][input_node_index][output_node_index]
-						deltah = N[layer+1][input_node_index].error
-						sum += wkh*deltah
-						# print('sum += w['+str(layer+1)+']['+str(input_node_index)+']['+str(output_node_index)+']*N['+str(layer+1)+']['+str(input_node_index)+'].error')
-				N[layer][output_node_index].error = p1*sum
-				# print('N['+str(layer)+']['+str(output_node_index)+'].error = p1*sum')
+    def __init__(self, isinput=False):
+        self.out = 0.
+        self.error = 0.
+        self.x = None
+        self.isinput = isinput
 
 
-def recompute_weights(N,w,alfa):
-	for layer in range(len(N)):
-		# print('-------Layer recomputing weights:'+str(layer)+'---------------')
-		if layer == 0:
-			continue
-		for output_node_index in range(len(N[layer])):
-			for input_node_index in range(len(N[layer-1])):
-				delta_w = alfa*N[layer][output_node_index].error*N[layer-1][input_node_index].out
-				w[layer][output_node_index][input_node_index] += delta_w
-				# print('delta_w = alfa*N['+str(layer)+']['+str(output_node_index)+'].error*N['+str(layer-1)+']['+str(input_node_index)+'].out')
-				# print('w['+str(layer)+']['+str(output_node_index)+']['+str(input_node_index)+'] += delta_w')	
-				
-				
+def is_input_layer(layer):
+    return layer == 0
+
+
+def compute_forward_input_nodes(x, nodes, layer, output_node):
+    nodes[layer][output_node].out = x[output_node]
+
+
+def compute_output_layer(nodes, layer, output_node, w):
+    sum = 0.
+    prev_layer = len(nodes[layer - 1])
+    for input_node in range(prev_layer):
+        weight = w[layer][output_node][input_node]
+        input = nodes[layer - 1][input_node].out
+        sum += weight * input
+        # print_summing_line_info(layer, output_node, input_node)
+    nodes[layer][output_node].out = sigmoid(sum)
+    # print_ouput_line_info(layer, output_node, nodes)
+
+
+def compute_layer(nodes, layer, x, w):
+    # print('-------Layer:'+str(layer)+'---------------')
+    current_layer = len(nodes[layer])
+    for output_node in range(current_layer):
+        if is_input_layer(layer):
+            compute_forward_input_nodes(x, nodes, layer, output_node)
+        else:
+            compute_output_layer(nodes, layer, output_node, w)
+
+
+def forward(x, w, nodes):
+    layers = len(nodes)
+    for layer in range(layers):
+        compute_layer(nodes, layer, x, w)
+
+
+def print_summing_line_info(layer, output_node_index, input_node_index):
+    output = [
+        'Summing:w[' + str(layer) + ']',
+        '[' + str(output_node_index) + ']',
+        '[' + str(input_node_index) + ']',
+        '*N[' + str(layer - 1) + '][' + str(input_node_index) + '].out']
+    print(''.join(output))
+
+
+def print_output_line_info(layer, output_node_index, nodes):
+    output = [
+        'N[' + str(layer) + '][' + str(output_node_index) + '].out=',
+        str(nodes[layer][output_node_index].out)]
+    print(''.join(output))
+
+
+def print_backward_base_error_info(layer, output_node_index):
+    output = [
+        'p1=N[' + str(layer) + '][' + str(output_node_index) + '].out',
+        '*(1-N[' + str(layer) + '][' + str(output_node_index) + '].out)']
+    print(''.join(output))
+
+
+def print_backward_error_output_layer(layer, output_node_index):
+    output = [
+        'N[' + str(layer) + ']',
+        '[' + str(output_node_index) + '].error',
+        '= p1*(t-', 'N[' + str(layer) + ']',
+        '[' + str(output_node_index) + '].out)']
+    print(''.join(output))
+
+
+def print_backward_error_sum(layer, input_node, output_node):
+    output = [
+        'sum += w[' + str(layer + 1) + ']',
+        '[' + str(input_node) + ']',
+        '[' + str(output_node) + ']',
+        '*N[' + str(layer + 1) + ']',
+        '[' + str(input_node) + '].error']
+    print(''.join(output))
+
+
+def print_backward_error_hidden_layer(layer, output_node):
+    print('N['+str(layer)+']['+str(output_node)+'].error = p1*sum')
+
+
+def compute_error_output_layer(nodes, layer, output_node, p1, t, y):
+    nodes[layer][output_node].error = p1 * (t - y)
+    # print_backward_error_output_layer(layer, output_node)
+
+
+def compute_error_hidden_layer(nodes, layer, node, w, p1):
+    sum = 0.
+    for input_node in range(len(nodes[layer+1])):
+        for output_node in range(len(nodes[layer])):
+            wkh = w[layer+1][input_node][output_node]
+            deltah = nodes[layer + 1][input_node].error
+            sum += wkh * deltah
+            # print_backward_error_sum(layer, input_node, output_node)
+    # gives better results?? why?
+    # nodes[layer][output_node].error = p1 * sum
+    # this is the proper way, but gives worser results!
+    nodes[layer][node].error = p1 * sum
+    # print_backward_error_hidden_layer(layer, node)
+
+
+def backward(nodes, t, w):
+    number_of_layers = len(nodes)
+    for layer in range(number_of_layers-1, 0, -1):
+        # print('-------Layer backtracking:'+str(layer)+'---------------')
+        number_of_nodes_current_layer = len(nodes[layer])
+        for node in range(number_of_nodes_current_layer):
+            y = nodes[layer][node].out
+            p1 = y*(1-y)
+            # print_backward_base_error_info(layer, node)
+            if layer == len(nodes)-1:
+                compute_error_output_layer(nodes, layer, node, p1, t, y)
+            else:
+                compute_error_hidden_layer(nodes, layer, node, w, p1)
+
+
+def print_delta_weight_info(layer, output_node, input_node):
+    output = [
+        'delta_w = ',
+        'alfa*N[' + str(layer) + '][' + str(output_node) + '].error',
+        '*N[' + str(layer - 1) + '][' + str(input_node) + '].out']
+    print(''.join(output))
+
+
+def print_weight_recompute_info(layer, output_node, input_node):
+    output = [
+        'w[' + str(layer) + ']',
+        '[' + str(output_node) + ']',
+        '[' + str(input_node) + ']',
+        '+= delta_w']
+    print(''.join(output))
+
+
+def compute_weight(nodes, layer, output_node, input_node, w, alfa):
+    delta_h = nodes[layer][output_node].error
+    y = nodes[layer - 1][input_node].out
+    delta_w = alfa * delta_h * y
+    w[layer][output_node][input_node] += delta_w
+
+
+def recompute_weights(nodes, w, alfa):
+    for layer in range(len(nodes)):
+        # print('-------Layer recomputing weights:'+str(layer)+'------------')
+        if layer == 0:
+            continue
+        for output_node in range(len(nodes[layer])):
+            for input_node in range(len(nodes[layer-1])):
+                compute_weight(nodes, layer, output_node, input_node, w, alfa)
+                # print_delta_weight_info(layer, output_node, input_node)
+                # print_weight_recompute_info(layer, output_node, input_node)
+
+
+def init_input_weights(w):
+    w.append([])
+
+
+def init_hidden_weights(w, num_in, list_num_hid, w_min, w_max):
+    num = num_in
+    for k_hid in range(len(list_num_hid)):
+        w_hid = []
+        for k in range(list_num_hid[k_hid]):
+            w_hid.append(np.random.uniform(w_min, w_max, num))
+        w.append(w_hid)
+        num = list_num_hid[k_hid]
+
+
+def init_output_weights(w, num_out, num_in, w_min, w_max):
+    w_out = []
+    for k in range(num_out):
+        w_out.append(np.random.uniform(w_min, w_max, num_in))
+    w.append(w_out)
+
+
 def init_weights(num_in, list_num_hid, num_out):
-	w = []
-	w.append([])
-	
-	w_min = -0.5
-	w_max = 0.5
-	
-	num = num_in
-	for k_hid in range(len(list_num_hid)):
-		w_hid = []
-		for k in range(list_num_hid[k_hid]):
-			w_hid.append(np.random.uniform(w_min,w_max,num))
-		w.append(w_hid)
-		num = list_num_hid[k_hid]
-	
-	w_out=[]
-	for k in range(num_out):
-		w_out.append(np.random.uniform(w_min,w_max,list_num_hid[-1]))
-	w.append(w_out)
-	
-	return w
+    w_min = 0.
+    w_max = 1.
+    w = []
+
+    init_input_weights(w)
+    init_hidden_weights(w, num_in, list_num_hid, w_min, w_max)
+    init_output_weights(w, num_out, list_num_hid[-1], w_min, w_max)
+
+    return w
+
+
+def init_input_nodes(nodes, num_in):
+    nodes_in = []
+    for i in range(num_in):
+        nodes_in.append(Node(True))
+    nodes.append(nodes_in)
+
+
+def init_hidden_nodes(nodes, list_num_hid):
+    for k in range(len(list_num_hid)):
+        nodes_hidden = []
+        for i in range(list_num_hid[k]):
+            nodes_hidden.append(Node())
+        nodes.append(nodes_hidden)
+
+
+def init_output_nodes(nodes, num_out):
+    nodes_out = []
+    for i in range(num_out):
+        nodes_out.append(Node())
+    nodes.append(nodes_out)
+
 
 def init_nodes(num_in, list_num_hid, num_out):
-	N =[]
-	N_in = []
-	for i in range(num_in):
-		N_in.append(Node(True))
-	N.append(N_in)
-	
-	for k in range(len(list_num_hid)):
-		N_hidden = []
-		for i in range(list_num_hid[k]):
-			N_hidden.append(Node())
-		N.append(N_hidden)
-	
-	N_out = []
-	for i in range(num_out):
-		N_out.append(Node())	
-	N.append(N_out)
-	
-	return N
-	
-def stop_condition(G_E,it):
-	return (len(G_E) > 2 and G_E[len(G_E)-2] < G_E[len(G_E)-1]) or (G_E[len(G_E)-1] < 0.001) or (it > 100000)
+    nodes = []
+
+    init_input_nodes(nodes, num_in)
+    init_hidden_nodes(nodes, list_num_hid)
+    init_output_nodes(nodes, num_out)
+
+    return nodes
+
+
+def global_error_rises(global_error):
+    return len(global_error) > 2 and global_error[-2] < global_error[-1]
+
+
+def stop_condition(global_error, it):
+    return global_error_rises(global_error) or \
+           global_error[-1] < 0.001 or \
+           it > 100000
+
+
+def train_network(x, w, t, nodes, alfa):
+    it = 0
+    global_error = []
+    while True:
+        e = 0.
+        # takze indexi su [layer][output_node_index][input_node_index]
+        for index_input in range(len(x)):
+
+            forward(x[index_input], w, nodes)
+            backward(nodes, t[index_input], w)
+            recompute_weights(nodes, w, alfa)
+
+            e += np.power(t[index_input] - nodes[-1][0].out, 2)
+
+        e = 0.5*e
+        global_error.append(e)
+        it = it + 1
+        if stop_condition(global_error, it):
+            break
+
+    print('global_error = '+str(global_error[-1]))
+    print('Iterations='+str(it))
+
+    return global_error
+
+
+def compute_network(x, w, nodes):
+    result = []
+    for i in range(len(x)):
+        forward(x[i], w, nodes)
+        result.append(nodes[-1][0].out)
+
+    return result
+
+
+def print_results(t, result):
+    print('RESULTS:')
+    for i in range(len(t)):
+        print(str(t[i])+'->'+str(result[i]))
+
 
 def main():
-	x = [[0.,0.],[0.,1.],[1.,0.],[1.,1.]]
-	t = [0.,1.,1.,1.]
-		
-	w = init_weights(2,[2,4],1)		
-	N = init_nodes(2,[2,4],1)
-	
-	alfa=0.1
-		
-	G_E = []
-	
-	it = 0
-	while True:
-		E = 0.
-		#takze indexi su [layer][output_node_index][input_node_index]
-		
-		for index_input in range(len(x)):
-			
-			forward(x[index_input],w,N)
-			backward(N,t[index_input],w)
-			recompute_weights(N,w,alfa)
-			
-			E += np.power(t[index_input] - N[len(N)-1][0].out,2)	
-		
-		E = 0.5*E
-		
-		G_E.append(E)
-			
-		it = it +1
-		
-		if stop_condition(G_E,it):
-			break
-	
-	print('G_E = '+str(G_E[-1]))
-	# print(w)
-	print('Iterations='+str(it))
-	
-	for i in range(len(x)):	
-		
-		forward(x[i],w,N)
-		
-		print('RESULTS:')
-		print(str(t[i])+'->'+str(N[len(N)-1][0].out))
-		
-	plt.plot(range(len(G_E)),G_E,'r')
-	plt.show()
-	
-if __name__ == '__main__':
-	main()
+    x = [[0., 0.], [0., 1.], [1., 0.], [1., 1.]]
+    t = [0., 1., 1., 1.]
 
-	
+    # after ~20000 iterations doesn't get better & big error
+    # w = init_weights(2, [2, 4], 1)
+    # nodes = init_nodes(2, [2, 4], 1)
+
+    # after ~20000 iterations doesn't get better & big error
+    # w = init_weights(2, [2, 4, 2], 1)
+    # nodes = init_nodes(2, [2, 4, 2], 1)
+
+    # after ~20000 iterations doesn't get better
+    # alfa = 0.01, global_error = 0.282287335698
+    # alfa = 0.1, global_error = 0.281951601816
+    # w = init_weights(2, [4], 1)
+    # nodes = init_nodes(2, [4], 1)
+
+    # after ~20000 iterations doesn't get better
+    w = init_weights(2, [2], 1)
+    nodes = init_nodes(2, [2], 1)
+
+    alfa = 0.1
+
+    global_error = train_network(x, w, t, nodes, alfa)
+    result = compute_network(x, w, nodes)
+    print_results(t, result)
+
+    plt.plot(range(len(global_error)), global_error, 'r')
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
