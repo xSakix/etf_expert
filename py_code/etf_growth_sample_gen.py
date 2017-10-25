@@ -88,15 +88,17 @@ def main():
 	#ticket = 'btc_data'
 	ticket = 'SPY'
 	
-	data,l,dates = read_etf('c:\\WORK folders\\etf_expert\\py_code\\etf_data\\'+ticket+'.csv')
+	data,l,dates = read_etf('c:\\downloaded_data\\USD\\'+ticket+'.csv')
 			
 	#zakladne vlastnosti hold, buy, sell	
 	c = [0.01,0.01,0.01]		
 	#grow factor pre hold, buy, sell
 	#best spy
 	#r_c = [3.7248023104723726, 3.7434059826819586, 3.6937761867181664]
+	r_c=[3.792741215699916, 3.961690242868475, 3.69609636766504]
 	#best spy single investment
-	r_c=[0.007496274346508,3.758124406721808,3.604305873682242]
+	#r_c=[0.007496274346508,3.758124406721808,3.604305873682242]
+	#r_c=[3.781934538211035, 3.867263993546563, 3.6020015059038997]
 	#best ewa
 	#r_c=[3.673787568009235,3.6054382787045705,3.7991922674927654]
 	#best ews

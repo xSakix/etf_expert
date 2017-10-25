@@ -248,8 +248,9 @@ def create_copy(individual,data):
 def main():
 	ticket = 'SPY'
 	data = read_etf('c:\\downloaded_data\\USD\\'+ticket+'.csv')
-	
-	
+
+	data = data[:len(data)/2]
+
 	individuals = []
 	
 	hist_totals = []

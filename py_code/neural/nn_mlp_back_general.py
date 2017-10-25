@@ -114,9 +114,9 @@ def compute_error_hidden_layer(nodes, layer, node, w, p1):
             sum += wkh * deltah
             # print_backward_error_sum(layer, input_node, output_node)
     # gives better results?? why?
-    # nodes[layer][output_node].error = p1 * sum
+    nodes[layer][output_node].error = p1 * sum
     # this is the proper way, but gives worser results!
-    nodes[layer][node].error = p1 * sum
+    #nodes[layer][node].error = p1 * sum
     # print_backward_error_hidden_layer(layer, node)
 
 
@@ -306,8 +306,9 @@ def main():
     # nodes = init_nodes(2, [4], 1)
 
     # after ~20000 iterations doesn't get better
-    w = init_weights(2, [2], 1)
-    nodes = init_nodes(2, [2], 1)
+    w = init_weights(2, [2, 4], 1)
+    print(w)
+    nodes = init_nodes(2, [2, 4], 1)
 
     alfa = 0.1
 

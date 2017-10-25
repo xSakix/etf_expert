@@ -1,5 +1,6 @@
 .metadata
 .recommenders
+.idea
 */.settings
 */.classpath
 */.project
@@ -10,6 +11,8 @@
 *.stackdump
 *.log
 *.obj
+*.iml
+*.class
 out.txt
 nets
 neuroph
