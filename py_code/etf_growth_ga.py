@@ -266,7 +266,7 @@ def main():
 
     print('Original length: %d' % int(len(data)))
 
-    data = data[:int(71*len(data) / 72)]
+    data = data[:int(143*len(data) / 144)]
 
     print('New length: %d' % int(len(data)))
 

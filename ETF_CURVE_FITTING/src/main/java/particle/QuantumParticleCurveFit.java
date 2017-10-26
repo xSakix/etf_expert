@@ -1,30 +1,23 @@
-package org.xSakix.curvefittingga;
+package particle;
 
 import cern.colt.list.DoubleArrayList;
-import cern.jet.random.Uniform;
 import org.math.plot.Plot2DPanel;
 import org.xSakix.etfreader.EtfReader;
-import org.xSakix.functions.Functions;
-import org.xSakix.gatools.FloatOperations;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.List;
 
-public class CurveFitter {
+public class QuantumParticleCurveFit {
 
     public static final int FRAME = 10;
     public static final int POP_SIZE = 1000;
-    public static final int M = 6;
     public static final int ITER_MAX = 10000;
-    public static final double ERROR_TOL = 0.001;
-    public static final double MUT_RATE = 0.1;
+    public static final int M = 6;
 
     public static void main(String[] args) throws IOException {
-
         //p(x) = w[0]+w[1]*x+w[2]*x^2+w[3]*x^3+....+w[M]*x^M
         //we are looking for w[0],w[1],w[2],w[3],...,w[M]
         //such that LSE < ERROR_TOL
@@ -35,69 +28,52 @@ public class CurveFitter {
         double x[] = Arrays.copyOfRange(data, 0, data.length - FRAME);
         double t[] = Arrays.copyOfRange(data, 1, data.length - FRAME + 1);
 
-        List<Individual> individuals = new ArrayList<Individual>(POP_SIZE);
-//        double max = Arrays.stream(data).max().getAsDouble();
-//        initializaPopulation(individuals,
-//                -max,
-//                max);
+        List<QauntumParticle> particles = new ArrayList<QauntumParticle>(POP_SIZE);
+
         double max = 1.;
-        initializaPopulation(individuals,
+        initializaParticles(particles,
                 -max,
                 max);
-        int iterations = 0;
-        Individual best = null;
 
         DoubleArrayList fitnessHistory = new DoubleArrayList(ITER_MAX);
+
+        int iterations = 0;
+
+        QauntumParticle best = null;
+
 
         while (true) {
             if (endCondition(iterations, best, x, t)) {
                 break;
             }
-            individuals.parallelStream().forEach(i -> i.computeFitness(x, t));
-            Collections.sort(individuals, new Comparator<Individual>() {
+
+            particles.parallelStream().forEach(p -> {
+                p.computeWeights();
+                p.computeFitness(x,t);
+            });
+
+            Collections.sort(particles, new Comparator<QauntumParticle>() {
                 @Override
-                public int compare(Individual o1, Individual o2) {
+                public int compare(QauntumParticle o1, QauntumParticle o2) {
                     return Double.compare(o1.getFitness(), o2.getFitness());
                 }
             });
-            fitnessHistory.add(individuals.get(0).getFitness());
-            if (best == null || best.getFitness() > individuals.get(0).getFitness()) {
-                best = individuals.get(0);
-            }
-            List<Individual> individualList = new ArrayList<>(POP_SIZE);
-            individualList.add(individuals.get(0));
-            individualList.add(individuals.get(1));
-            while (individualList.size() < POP_SIZE) {
-                Individual parent1 = individuals.get(0);
-                Individual parent2 = individuals.get(1);
-                individuals.remove(parent1);
-                individuals.remove(parent2);
-                Individual child1 = new Individual(M);
-                Individual child2 = new Individual(M);
-                double w_cross12[] = new double[M];
-                double w_cross21[] = new double[M];
-                double w1[] = parent1.getW();
-                double w2[] = parent2.getW();
-                for (int i = 0; i < M; i++) {
-                    w_cross12[i] = FloatOperations.cross(w1[i], w2[i]);
-                    w_cross21[i] = FloatOperations.cross(w2[i], w1[i]);
-                    if (Uniform.staticNextDoubleFromTo(0., 1.) < MUT_RATE) {
-                        w_cross12[i] = FloatOperations.mutate(w_cross12[i]);
-                        w_cross21[i] = FloatOperations.mutate(w_cross21[i]);
-                    }
+
+            fitnessHistory.add(particles.get(0).getFitness());
+
+            if (best == null || best.getFitness() > particles.get(0).getFitness()) {
+                best = particles.get(0);
+                best.setGw(best.getW());
+                for(int i = 1; i < POP_SIZE;i++){
+                    particles.get(i).setGw(best.getW());
                 }
-                child1.setW(w_cross12);
-                child2.setW(w_cross21);
-                individualList.add(child1);
-                individualList.add(child2);
             }
-            individuals.clear();
-            individuals.addAll(individualList);
             System.out.println(String.format("Iteration = %d", iterations));
             System.out.println(String.format("Best fit weights = %s", Arrays.toString(best.getW())));
             System.out.println(String.format("Best fitness = %f", best.getFitness()));
-            System.out.println(String.format("Actual fitness = %f", individuals.get(0).getFitness()));
+            System.out.println(String.format("Actual fitness = %f", particles.get(0).getFitness()));
             System.out.println(String.format("Best RMS = %f", best.getRms()));
+
             iterations++;
         }
 
@@ -130,7 +106,7 @@ public class CurveFitter {
         }
 
 
-        //plot2.addLinePlot("fitness",Arrays.copyOf(fitnessHistory.elements(),fitnessHistory.size()));
+        plot2.addLinePlot("fitness",Arrays.copyOf(fitnessHistory.elements(),fitnessHistory.size()));
 
         Dimension dim = new Dimension(800, 600);
 
@@ -142,28 +118,18 @@ public class CurveFitter {
         frame.setMinimumSize(dim);
         frame.add(plot);
         //frame.add(plot1);
-        //frame.add(plot2);
+        frame.add(plot2);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private static double[] adjustdata(double[] data) {
-        double dataTemp[] = new double[data.length];
-        double max = Arrays.stream(data).max().getAsDouble();
-        for (int i = 0; i < data.length; i++) {
-            dataTemp[i] = data[i] / max;
-        }
-        data = Arrays.copyOf(dataTemp, dataTemp.length);
-        return data;
-    }
-
-    private static boolean endCondition(int iterations, Individual best, double[] x, double[] t) {
+    private static boolean endCondition(int iterations, QauntumParticle best, double[] x, double[] t) {
         return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
     }
 
-    private static void initializaPopulation(List<Individual> individuals, double min, double max) {
+    private static void initializaParticles(List<QauntumParticle> particles, double min, double max) {
         for (int i = 0; i < POP_SIZE; i++) {
-            individuals.add(new Individual(M, min, max));
+            particles.add(new QauntumParticle(M, min, max));
         }
     }
 }

@@ -16,8 +16,18 @@ public class Individual {
         M = m;
         this.w = new double[M];
         for(int i = 0; i < M;i++){
-            //w[i] = Uniform.staticNextDoubleFromTo(-0.5,.5);
-            w[i] = Uniform.staticNextDoubleFromTo(0.,1.);
+            w[i] = Uniform.staticNextDoubleFromTo(-5.,5.);
+            //w[i] = Uniform.staticNextDoubleFromTo(0.,1.);
+        }
+        //w[0] = 0.;
+    }
+
+    public Individual(int m,double min, double max) {
+        M = m;
+        this.w = new double[M];
+        for(int i = 0; i < M;i++){
+            w[i] = Uniform.staticNextDoubleFromTo(min,max);
+            //w[i] = Uniform.staticNextDoubleFromTo(0.,1.);
         }
         //w[0] = 0.;
     }

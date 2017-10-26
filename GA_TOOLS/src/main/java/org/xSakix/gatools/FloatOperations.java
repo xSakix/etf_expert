@@ -18,18 +18,18 @@ public class FloatOperations {
         long i1 =  Math.abs(Math.round(f1* mantise));
         long i2 =  Math.abs(Math.round(f2* mantise));
         String b1 = Long.toBinaryString(i1);
-        while (b1.length() < 56){
+        while (b1.length() < 64){
             b1 = "0"+b1;
         }
 
         String b2 = Long.toBinaryString(i2);
-        while (b2.length() < 56){
+        while (b2.length() < 64){
             b2 = "0"+b2;
         }
 
 
-        char result[] = new char[56];
-        int index = Uniform.staticNextIntFromTo(0,55);
+        char result[] = new char[64];
+        int index = Uniform.staticNextIntFromTo(0,63);
         try {
             b1.getChars(0, index, result, 0);
             b2.getChars(index, b2.length(), result, index);
@@ -59,12 +59,12 @@ public class FloatOperations {
 
         long i1 = Math.abs(Math.round(f1 * mantise));
         String b1 = Long.toBinaryString(i1);
-        while (b1.length() < 56){
+        while (b1.length() < 64){
             b1 = "0"+b1;
         }
 
-        char result[] = new char[56];
-        int index = Uniform.staticNextIntFromTo(0, 55);
+        char result[] = new char[64];
+        int index = Uniform.staticNextIntFromTo(0, 63);
         if(index == 0){
             mod *= -1.;
         }
