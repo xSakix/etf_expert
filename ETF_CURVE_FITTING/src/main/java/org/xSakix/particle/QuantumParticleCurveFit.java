@@ -1,4 +1,4 @@
-package particle;
+package org.xSakix.particle;
 
 import cern.colt.list.DoubleArrayList;
 import org.math.plot.Plot2DPanel;
@@ -13,9 +13,9 @@ import java.util.List;
 public class QuantumParticleCurveFit {
 
     public static final int FRAME = 10;
-    public static final int POP_SIZE = 1000;
-    public static final int ITER_MAX = 10000;
-    public static final int M = 6;
+    public static final int POP_SIZE = 100000;
+    public static final int ITER_MAX = 200;
+    public static final int M = 5;
 
     public static void main(String[] args) throws IOException {
         //p(x) = w[0]+w[1]*x+w[2]*x^2+w[3]*x^3+....+w[M]*x^M
@@ -41,9 +41,8 @@ public class QuantumParticleCurveFit {
 
         QauntumParticle best = null;
 
-
         while (true) {
-            if (endCondition(iterations, best, x, t)) {
+            if (endCondition(iterations, best, x, t,fitnessHistory)) {
                 break;
             }
 
@@ -123,8 +122,10 @@ public class QuantumParticleCurveFit {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private static boolean endCondition(int iterations, QauntumParticle best, double[] x, double[] t) {
-        return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
+    private static boolean endCondition(int iterations, QauntumParticle best, double[] x, double[] t, DoubleArrayList fitnessHistory) {
+        //return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
+        int size = fitnessHistory.size();
+        return size > 10 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-10)) < 0.001;
     }
 
     private static void initializaParticles(List<QauntumParticle> particles, double min, double max) {

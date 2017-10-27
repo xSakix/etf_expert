@@ -1,4 +1,4 @@
-package particle;
+package org.xSakix.particle;
 
 import cern.jet.random.Uniform;
 import org.xSakix.tools.Errors;
@@ -34,7 +34,8 @@ public class QauntumParticle {
             Pw[i] = w[i];
             Gw[i] = w[i];
         }
-        this.alpha = Uniform.staticNextDoubleFromTo(0.,1.);
+        //this.alpha = Uniform.staticNextDoubleFromTo(0.,1.);
+        this.alpha = 0.75;
     }
 
     public void computeWeights(){

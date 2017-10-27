@@ -1,4 +1,4 @@
-package particle;
+package org.xSakix.particle;
 
 import cern.jet.random.Uniform;
 import org.xSakix.tools.Errors;

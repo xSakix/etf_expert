@@ -1,8 +1,7 @@
-package particle;
+package org.xSakix.particle;
 
 import cern.colt.list.DoubleArrayList;
 import org.math.plot.Plot2DPanel;
-import org.xSakix.curvefittingga.Individual;
 import org.xSakix.etfreader.EtfReader;
 
 import javax.swing.*;
@@ -14,9 +13,9 @@ import java.util.List;
 public class ParticleCurveFit {
 
     public static final int FRAME = 10;
-    public static final int POP_SIZE = 1000;
-    public static final int ITER_MAX = 20000;
-    public static final int M = 6;
+    public static final int POP_SIZE = 100000;
+    public static final int ITER_MAX = 200;
+    public static final int M = 5;
 
     public static void main(String[] args) throws IOException {
         //p(x) = w[0]+w[1]*x+w[2]*x^2+w[3]*x^3+....+w[M]*x^M
