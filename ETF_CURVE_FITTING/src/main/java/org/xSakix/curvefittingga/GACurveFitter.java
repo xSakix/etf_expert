@@ -6,6 +6,8 @@ import org.math.plot.Plot2DPanel;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.functions.Functions;
 import org.xSakix.gatools.FloatOperations;
+import org.xSakix.particle.Particle;
+import org.xSakix.tools.Errors;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,14 +16,14 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.List;
 
-public class CurveFitter {
+public class GACurveFitter {
 
     public static final int FRAME = 10;
-    public static final int POP_SIZE = 1000;
-    public static final int M = 6;
+    public static final int POP_SIZE = 100;
+    public static final int M = 4;
     public static final int ITER_MAX = 10000;
     public static final double ERROR_TOL = 0.001;
-    public static final double MUT_RATE = 0.1;
+    public static final double MUT_RATE = 0.3;
 
     public static void main(String[] args) throws IOException {
 
@@ -36,10 +38,6 @@ public class CurveFitter {
         double t[] = Arrays.copyOfRange(data, 1, data.length - FRAME + 1);
 
         List<Individual> individuals = new ArrayList<Individual>(POP_SIZE);
-//        double max = Arrays.stream(data).max().getAsDouble();
-//        initializaPopulation(individuals,
-//                -max,
-//                max);
         double max = 1.;
         initializaPopulation(individuals,
                 -max,
@@ -50,7 +48,7 @@ public class CurveFitter {
         DoubleArrayList fitnessHistory = new DoubleArrayList(ITER_MAX);
 
         while (true) {
-            if (endCondition(iterations, best, x, t)) {
+            if (endCondition(iterations, best, fitnessHistory)) {
                 break;
             }
             individuals.parallelStream().forEach(i -> i.computeFitness(x, t));
@@ -74,13 +72,17 @@ public class CurveFitter {
                 individuals.remove(parent2);
                 Individual child1 = new Individual(M);
                 Individual child2 = new Individual(M);
-                double w_cross12[] = new double[M];
-                double w_cross21[] = new double[M];
                 double w1[] = parent1.getW();
                 double w2[] = parent2.getW();
+                double w_cross12[] = Arrays.copyOf(w1,w1.length);
+                double w_cross21[] = Arrays.copyOf(w2,w2.length);
+                for(int number_of_indexes = 0; number_of_indexes <2;number_of_indexes++) {
+                    for (int i = 0; i < M; i++) {
+                        w_cross12[i] = FloatOperations.cross(w_cross12[i], w_cross21[i]);
+                        w_cross21[i] = FloatOperations.cross(w_cross21[i], w_cross12[i]);
+                    }
+                }
                 for (int i = 0; i < M; i++) {
-                    w_cross12[i] = FloatOperations.cross(w1[i], w2[i]);
-                    w_cross21[i] = FloatOperations.cross(w2[i], w1[i]);
                     if (Uniform.staticNextDoubleFromTo(0., 1.) < MUT_RATE) {
                         w_cross12[i] = FloatOperations.mutate(w_cross12[i]);
                         w_cross21[i] = FloatOperations.mutate(w_cross21[i]);
@@ -123,11 +125,11 @@ public class CurveFitter {
         plot.addLinePlot("curve_plot", Color.red, y);
 
         System.out.println("------------------RESULTS-----------------");
-
         for (int i = data.length - FRAME; i < data.length; i++) {
-            double error = Math.abs(data[i] - y[i]);
+            double error = Math.abs( data[i]- y[i]);
             System.out.println(String.format("error = %.3f-%.3f = %.3f", data[i], y[i], error));
         }
+        System.out.println(String.format("LSE=%f", Errors.leastSquareError(data,y)));
 
 
         //plot2.addLinePlot("fitness",Arrays.copyOf(fitnessHistory.elements(),fitnessHistory.size()));
@@ -157,8 +159,12 @@ public class CurveFitter {
         return data;
     }
 
-    private static boolean endCondition(int iterations, Individual best, double[] x, double[] t) {
-        return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
+    //    private static boolean endCondition(int iterations, Individual best, double[] x, double[] t) {
+//        return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
+//    }
+    private static boolean endCondition(int iterations, Individual best, DoubleArrayList fitnessHistory) {
+        int size = fitnessHistory.size();
+        return size > 10000 && Math.abs(fitnessHistory.get(size - 1) - fitnessHistory.get(size - 10000)) < 0.0001;
     }
 
     private static void initializaPopulation(List<Individual> individuals, double min, double max) {

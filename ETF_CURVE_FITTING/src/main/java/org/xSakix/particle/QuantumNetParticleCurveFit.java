@@ -3,18 +3,19 @@ package org.xSakix.particle;
 import cern.colt.list.DoubleArrayList;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.particle.neural.particle.NetParticle;
+import org.xSakix.particle.neural.quantum.QuantumNet;
+import org.xSakix.particle.neural.quantum.QuantumNetParticle;
 import org.xSakix.tools.Errors;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 
-public class NetParticleCurveFit {
+public class QuantumNetParticleCurveFit {
 
     public static final int FRAME = 20;
     public static final int POP_SIZE = 100;
     public static final int ITER_MAX = 200;
-    public static final int M = 2;
+    public static final int M = 4;
     private static final double FIT_TOL = 0.001;
     private static final double ERROR_TOL = 0.1;
 
@@ -47,16 +48,16 @@ public class NetParticleCurveFit {
         double t[] = Arrays.copyOf(tt.elements(),tt.size());
         double x[][] =  xx.toArray(new double[][]{});
 
-        List<NetParticle> particles = new ArrayList<NetParticle>(POP_SIZE);
+        List<QuantumNetParticle> particles = new ArrayList<>(POP_SIZE);
         for(int i = 0; i < POP_SIZE;i++){
-            particles.add(new NetParticle(M,M*2+1,(M*2+1)*2+1));
+            particles.add(new QuantumNetParticle(M,M*2+1,(M*2+1)*2+1));
         }
 
         DoubleArrayList fitnessHistory = new DoubleArrayList(ITER_MAX);
 
         int iterations = 0;
 
-        NetParticle best = null;
+        QuantumNetParticle best = null;
 
 
         while (true) {
@@ -64,15 +65,19 @@ public class NetParticleCurveFit {
                 break;
             }
 
+            QuantumNet sumNet = new QuantumNet(M,1,M*2+1,(M*2+1)*2+1);
+            particles.stream().forEach(p -> sumNet.addToC(p.getNet()));
+            sumNet.divCByParticlesSize(particles.size());
+
             particles.parallelStream().forEach(p -> {
-                p.computeVelocity();
+                p.setC(sumNet);
                 p.computeWeights();
                 p.computeFitness(x,t,max);
             });
 
-            Collections.sort(particles, new Comparator<NetParticle>() {
+            Collections.sort(particles, new Comparator<QuantumNetParticle>() {
                 @Override
-                public int compare(NetParticle o1, NetParticle o2) {
+                public int compare(QuantumNetParticle o1, QuantumNetParticle o2) {
                     return Double.compare(o1.getFitness(), o2.getFitness());
                 }
             });
@@ -145,7 +150,7 @@ public class NetParticleCurveFit {
 //        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private static boolean endCondition(int iterations, NetParticle best, DoubleArrayList fitnessHistory) {
+    private static boolean endCondition(int iterations, QuantumNetParticle best, DoubleArrayList fitnessHistory) {
         int size = fitnessHistory.size();
         return (best!=null && best.getFitness() < ERROR_TOL) ||
                 //iterations > ITER_MAX ||

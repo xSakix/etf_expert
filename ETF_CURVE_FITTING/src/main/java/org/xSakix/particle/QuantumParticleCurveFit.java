@@ -13,7 +13,7 @@ import java.util.List;
 public class QuantumParticleCurveFit {
 
     public static final int FRAME = 10;
-    public static final int POP_SIZE = 100000;
+    public static final int POP_SIZE = 100;
     public static final int ITER_MAX = 200;
     public static final int M = 5;
 
@@ -45,6 +45,18 @@ public class QuantumParticleCurveFit {
             if (endCondition(iterations, best, x, t,fitnessHistory)) {
                 break;
             }
+            double sum[] = new double[M];
+            for(QauntumParticle particle : particles){
+                double pw[] = particle.getPw();
+                for(int i = 0 ; i < pw.length;i++){
+                    sum[i]+=pw[i];
+                }
+            }
+            double c[] = new double[M];
+            for(int i = 0;i < M;i++){
+                c[i] = sum[i]/((double)particles.size());
+            }
+            particles.parallelStream().forEach(p -> p.setC(c));
 
             particles.parallelStream().forEach(p -> {
                 p.computeWeights();
@@ -125,7 +137,7 @@ public class QuantumParticleCurveFit {
     private static boolean endCondition(int iterations, QauntumParticle best, double[] x, double[] t, DoubleArrayList fitnessHistory) {
         //return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
         int size = fitnessHistory.size();
-        return size > 10 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-10)) < 0.001;
+        return size > 10 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-10)) < 0.000001;
     }
 
     private static void initializaParticles(List<QauntumParticle> particles, double min, double max) {

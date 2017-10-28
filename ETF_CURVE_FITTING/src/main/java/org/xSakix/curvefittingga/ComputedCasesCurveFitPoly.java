@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
-public class ComputedCases {
+public class ComputedCasesCurveFitPoly {
 
     public static final int FRAME = 10;
 
@@ -25,6 +25,7 @@ public class ComputedCases {
         double w4[] = new double[]{-0.03019892200769778, 1.002993140993256, -3.181531346503724E-5, 9.058001364948748E-8};
         double w2[] = new double[]{0.0492581209245362, 0.9998617997234333};
         double w5[] = new double[]{-0.19301101846284507, 1.0099907602368714, -1.2954303654558636E-4, 6.367456574589222E-7, -1.0508740353217935E-9};
+        //w5=-1.6910046134224208, 1.0672289893236564, -8.526703445085376E-4, 4.338403036572137E-6, -7.659993410245851E-9
         Individual best = new Individual(w3.length);
         best.setW(w3);
 

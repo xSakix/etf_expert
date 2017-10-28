@@ -1,5 +1,6 @@
 package org.xSakix.particle;
 
+import cern.jet.random.Normal;
 import cern.jet.random.Uniform;
 import org.xSakix.tools.Errors;
 
@@ -10,6 +11,7 @@ public class QauntumParticle {
     private double w[];
     private double Pw[];
     private double Gw[];
+    private double C[];
     private int M;
     private double fitness;
     private double lastFitness = Double.NaN;
@@ -29,6 +31,7 @@ public class QauntumParticle {
         this.w = new double[M];
         this.Pw = new double[M];
         this.Gw = new double[M];
+        this.C = new double[M];
         for(int i = 0; i < M;i++){
             w[i] = Uniform.staticNextDoubleFromTo(min,max);
             Pw[i] = w[i];
@@ -36,6 +39,8 @@ public class QauntumParticle {
         }
         //this.alpha = Uniform.staticNextDoubleFromTo(0.,1.);
         this.alpha = 0.75;
+        //this.alpha = Normal.staticNextDouble(0.5,1.);
+
     }
 
     public void computeWeights(){
@@ -45,11 +50,13 @@ public class QauntumParticle {
             double u = Uniform.staticNextDoubleFromTo(0.,1.);
             if(Uniform.staticNextDoubleFromTo(0.,1.) < 0.5){
 
-                w[i] = p+alpha*Math.abs(w[i]-p)*Math.log(1/u);
+//                w[i] = p+alpha*Math.abs(w[i]-p)*Math.log(1/u);
+                w[i] = p+alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
 
             }else{
 
-                w[i] = p-alpha*Math.abs(w[i]-p)*Math.log(1/u);
+//                w[i] = p-alpha*Math.abs(w[i]-p)*Math.log(1/u);
+                w[i] = p-alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
 
             }
 
@@ -114,5 +121,9 @@ public class QauntumParticle {
 
     public double getRms() {
         return rms;
+    }
+
+    public void setC(double CC[]){
+        this.C= Arrays.copyOf(CC,CC.length);
     }
 }

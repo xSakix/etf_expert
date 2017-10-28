@@ -13,9 +13,9 @@ import java.util.List;
 public class ParticleCurveFit {
 
     public static final int FRAME = 10;
-    public static final int POP_SIZE = 100000;
+    public static final int POP_SIZE = 10000;
     public static final int ITER_MAX = 200;
-    public static final int M = 5;
+    public static final int M = 6;
 
     public static void main(String[] args) throws IOException {
         //p(x) = w[0]+w[1]*x+w[2]*x^2+w[3]*x^3+....+w[M]*x^M
@@ -43,7 +43,7 @@ public class ParticleCurveFit {
 
 
         while (true) {
-            if (endCondition(iterations, best, x, t)) {
+            if (endCondition(iterations, best, fitnessHistory)) {
                 break;
             }
 
@@ -124,8 +124,9 @@ public class ParticleCurveFit {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    private static boolean endCondition(int iterations, Particle best, double[] x, double[] t) {
-        return iterations > ITER_MAX || (best != null && best.computeFitness(x, t) < 0.001);
+    private static boolean endCondition(int iterations, Particle best, DoubleArrayList fitnessHistory) {
+        int size = fitnessHistory.size();
+        return size > 10 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-10)) < 0.001;
     }
 
     private static void initializaParticles(List<Particle> particles, double min, double max) {
