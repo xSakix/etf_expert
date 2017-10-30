@@ -7,7 +7,7 @@ import java.util.List;
 public class QuantumNet {
     List<List<QuantumNode>> net;
 
-    public QuantumNet(int inputs, int outputs, int ...hidenLayers){
+    public QuantumNet(double alpha,int inputs, int outputs, int ...hidenLayers){
         net = new ArrayList<>(hidenLayers.length+1);
 
         int in = inputs;
@@ -15,7 +15,7 @@ public class QuantumNet {
         for(int numOfNodes : hidenLayers){
             List<QuantumNode> layer = new ArrayList<>(numOfNodes);
             for(int i = 0; i < numOfNodes;i++){
-                layer.add(new QuantumNode(in));
+                layer.add(new QuantumNode(in,alpha));
             }
             in = numOfNodes;
             net.add(layer);
@@ -23,12 +23,12 @@ public class QuantumNet {
 
         List<QuantumNode> layer = new ArrayList<>(outputs);
         for(int i = 0; i < outputs;i++){
-            layer.add(new QuantumNode(in));
+            layer.add(new QuantumNode(in,alpha));
         }
         net.add(layer);
     }
 
-    public QuantumNet(int inputs, double[] outputs, double[][]...hiddenLayers){
+    public QuantumNet(double alpha,int inputs, double[] outputs, double[][]...hiddenLayers){
         net = new ArrayList<>(hiddenLayers.length+1);
 
         int in = inputs;
@@ -36,7 +36,7 @@ public class QuantumNet {
         for(double[][] wHiddenLayer : hiddenLayers){
             List<QuantumNode> layer = new ArrayList<>(wHiddenLayer.length);
             for(int i = 0; i < wHiddenLayer.length;i++){
-                QuantumNode node = new QuantumNode(in);
+                QuantumNode node = new QuantumNode(in,alpha);
                 node.setW(wHiddenLayer[i]);
                 layer.add(node);
             }
@@ -45,7 +45,7 @@ public class QuantumNet {
         }
 
         List<QuantumNode> layer = new ArrayList<>(1);
-        QuantumNode node = new QuantumNode(in);
+        QuantumNode node = new QuantumNode(in,alpha);
         node.setW(outputs);
         layer.add(node);
         net.add(layer);

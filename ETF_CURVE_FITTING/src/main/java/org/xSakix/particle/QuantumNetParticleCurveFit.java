@@ -1,6 +1,7 @@
 package org.xSakix.particle;
 
 import cern.colt.list.DoubleArrayList;
+import cern.jet.random.Uniform;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.particle.neural.particle.NetParticle;
 import org.xSakix.particle.neural.quantum.QuantumNet;
@@ -15,9 +16,10 @@ public class QuantumNetParticleCurveFit {
     public static final int FRAME = 20;
     public static final int POP_SIZE = 100;
     public static final int ITER_MAX = 200;
-    public static final int M = 4;
+    public static final int M = 3;
     private static final double FIT_TOL = 0.001;
     private static final double ERROR_TOL = 0.1;
+    private static final double ALPHA = Uniform.staticNextDoubleFromTo(0.1,1.2);
 
     private static double[] adjustData(double[] data, double max) {
         double dataTemp[] = new double[data.length];
@@ -30,6 +32,9 @@ public class QuantumNetParticleCurveFit {
     }
 
     public static void main(String[] args) throws IOException {
+
+        System.out.println("Alpha= "+ALPHA);
+
         double orig_data[] = EtfReader.readEtf("c:\\downloaded_data\\USD\\SPY.csv");
         //data adjustment, find max and normalize data on max
         double max = Arrays.stream(orig_data).max().getAsDouble();
@@ -50,7 +55,7 @@ public class QuantumNetParticleCurveFit {
 
         List<QuantumNetParticle> particles = new ArrayList<>(POP_SIZE);
         for(int i = 0; i < POP_SIZE;i++){
-            particles.add(new QuantumNetParticle(M,M*2+1,(M*2+1)*2+1));
+            particles.add(new QuantumNetParticle(ALPHA,M,M*2+1,(M*2+1)*2+1));
         }
 
         DoubleArrayList fitnessHistory = new DoubleArrayList(ITER_MAX);
@@ -65,7 +70,7 @@ public class QuantumNetParticleCurveFit {
                 break;
             }
 
-            QuantumNet sumNet = new QuantumNet(M,1,M*2+1,(M*2+1)*2+1);
+            QuantumNet sumNet = new QuantumNet(ALPHA,M,1,M*2+1,(M*2+1)*2+1);
             particles.stream().forEach(p -> sumNet.addToC(p.getNet()));
             sumNet.divCByParticlesSize(particles.size());
 

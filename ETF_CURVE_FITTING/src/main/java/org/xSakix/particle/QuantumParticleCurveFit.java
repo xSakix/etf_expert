@@ -3,6 +3,7 @@ package org.xSakix.particle;
 import cern.colt.list.DoubleArrayList;
 import org.math.plot.Plot2DPanel;
 import org.xSakix.etfreader.EtfReader;
+import org.xSakix.tools.Errors;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,7 +16,7 @@ public class QuantumParticleCurveFit {
     public static final int FRAME = 10;
     public static final int POP_SIZE = 100;
     public static final int ITER_MAX = 200;
-    public static final int M = 5;
+    public static final int M = 3;
 
     public static void main(String[] args) throws IOException {
         //p(x) = w[0]+w[1]*x+w[2]*x^2+w[3]*x^3+....+w[M]*x^M
@@ -110,12 +111,13 @@ public class QuantumParticleCurveFit {
         plot.addLinePlot("curve_plot", Color.red, y);
 
         System.out.println("------------------RESULTS-----------------");
-
-        for (int i = data.length - FRAME; i < data.length; i++) {
+        double yy[] = new double[FRAME];
+        for (int i = data.length - FRAME,j=0 ;i < data.length; i++,j++) {
+            yy[j] = data[i];
             double error = Math.abs(data[i] - y[i]);
-            System.out.println(String.format("error = %.3f-%.3f = %.3f", data[i], y[i], error));
+            System.out.println(String.format("error = %.3f-%.3f = %.3f", yy[j], y[i], error));
         }
-
+        System.out.println(String.format("LSE=%f", Errors.leastSquareError(yy,Arrays.copyOfRange(y,y.length-FRAME,y.length))));
 
         plot2.addLinePlot("fitness",Arrays.copyOf(fitnessHistory.elements(),fitnessHistory.size()));
 

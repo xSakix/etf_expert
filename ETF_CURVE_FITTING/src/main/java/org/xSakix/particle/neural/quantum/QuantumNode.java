@@ -12,7 +12,7 @@ public class QuantumNode {
     private double C[];
     private double alpha;
 
-    public QuantumNode(int inputs) {
+    public QuantumNode(int inputs, double alpha) {
         this.inputs = inputs;
         w = new double[inputs];
         Pw = new double[inputs];
@@ -24,7 +24,8 @@ public class QuantumNode {
             Pw[i]=w[i];
             Gw[i]=w[i];
         }
-        this.alpha = 0.5;
+        //this.alpha = Uniform.staticNextDoubleFromTo(0.5,1.2);
+        this.alpha = alpha;
 
     }
 

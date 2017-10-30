@@ -9,8 +9,8 @@ public class QuantumNetParticle {
     private double lastFitness = Double.NaN;
     private double rms;
 
-    public QuantumNetParticle(int inputs, int ...hidenLayers) {
-        this.net = new QuantumNet(inputs,1,hidenLayers);
+    public QuantumNetParticle(double alpha,int inputs, int ...hidenLayers) {
+        this.net = new QuantumNet(alpha,inputs,1,hidenLayers);
     }
 
 
