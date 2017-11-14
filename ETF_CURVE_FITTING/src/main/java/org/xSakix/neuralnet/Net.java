@@ -8,7 +8,7 @@ import java.util.List;
 public class Net {
     List<List<Node>> net;
 
-    Net(double alpha,int inputs,int outputs,int ...hidenLayers){
+    Net(double alpha,double momentum, int inputs,int outputs,int ...hidenLayers){
         net = new ArrayList<>(hidenLayers.length+1);
 
         int in = inputs;
@@ -16,7 +16,7 @@ public class Net {
         for(int numOfNodes : hidenLayers){
             List<Node> layer = new ArrayList<>(numOfNodes);
             for(int i = 0; i < numOfNodes;i++){
-                layer.add(new Node(in,alpha));
+                layer.add(new Node(in,alpha,momentum));
             }
             in = numOfNodes;
             net.add(layer);
@@ -24,12 +24,12 @@ public class Net {
 
         List<Node> layer = new ArrayList<>(outputs);
         for(int i = 0; i < outputs;i++){
-            layer.add(new Node(in,alpha));
+            layer.add(new Node(in,alpha,momentum));
         }
         net.add(layer);
     }
 
-    public Net(double alpha,int inputs,double[] outputs, double[][]...hiddenLayers){
+    public Net(double alpha,double momentum, int inputs,double[] outputs, double[][]...hiddenLayers){
         net = new ArrayList<>(hiddenLayers.length+1);
 
         int in = inputs;
@@ -37,7 +37,7 @@ public class Net {
         for(double[][] wHiddenLayer : hiddenLayers){
             List<Node> layer = new ArrayList<>(wHiddenLayer.length);
             for(int i = 0; i < wHiddenLayer.length;i++){
-                Node node = new Node(in,alpha);
+                Node node = new Node(in,alpha,momentum);
                 node.setW(wHiddenLayer[i]);
                 layer.add(node);
             }
@@ -46,7 +46,7 @@ public class Net {
         }
 
         List<Node> layer = new ArrayList<>(1);
-        Node node = new Node(in,alpha);
+        Node node = new Node(in,alpha,momentum);
         node.setW(outputs);
         layer.add(node);
         net.add(layer);
@@ -131,5 +131,9 @@ public class Net {
         builder.append("]");
 
         return builder.toString();
+    }
+
+    public void initWeights(double min, double max){
+        net.parallelStream().forEach(p -> p.parallelStream().forEach(pp-> pp.initWeights(min,max)));
     }
 }

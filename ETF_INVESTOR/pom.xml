@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ETF_GROWTH</groupId>
-    <artifactId>ETF_GROWTH</artifactId>
+    <groupId>ETF_INVESTOR</groupId>
+    <artifactId>ETF_INVESTOR</artifactId>
     <version>1.0-SNAPSHOT</version>
     <build>
         <plugins>
@@ -21,27 +21,20 @@
     </build>
     <dependencies>
         <dependency>
-            <groupId>colt</groupId>
-            <artifactId>colt</artifactId>
-            <version>1.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>FINANCE_TOOLS</groupId>
-            <artifactId>FINANCE_TOOLS</artifactId>
+            <groupId>ETF_GROWTH</groupId>
+            <artifactId>ETF_GROWTH</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>com.github.yannrichet</groupId>
-            <artifactId>JMathPlot</artifactId>
-            <version>RELEASE</version>
-        </dependency>
-        <dependency>
-            <groupId>GA_TOOLS</groupId>
-            <artifactId>GA_TOOLS</artifactId>
+            <groupId>ETF_CURVE_FITTING</groupId>
+            <artifactId>ETF_CURVE_FITTING</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-
+        <dependency>
+            <groupId>ETFDataDownloader</groupId>
+            <artifactId>ETFDataDownloader</artifactId>
+            <version>0.0.1</version>
+        </dependency>
     </dependencies>
-
 
 </project>

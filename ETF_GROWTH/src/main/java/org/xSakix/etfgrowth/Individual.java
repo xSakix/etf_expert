@@ -12,31 +12,32 @@ import java.util.List;
 
 public class Individual {
 
-    private double data[];
+    protected static final double TRANSACTION_COST = 4.0;
+    protected double data[];
 
-    private double r_c[];
+    protected double r_c[];
 
-    private double c[];
+    protected double c[];
 
-    private double cash = 300.0;
-    private double sum = cash;
-    private int shares = 0;
-    private List<DoubleArrayList> hist_c ;
-    private IntArrayList hist_shares ;
-    private DoubleArrayList hist_cash;
-    private int num_hold = 0;
-    private int num_buy = 0;
-    private int num_sell = 0;
-    private DoubleArrayList returns = new DoubleArrayList();
-    private double year_total = 0.;
+    protected double cash = 300.0;
+    protected double sum = cash;
+    protected int shares = 0;
+    protected int num_hold = 0;
+    protected int num_buy = 0;
+    protected int num_sell = 0;
+    protected DoubleArrayList returns = new DoubleArrayList();
+    protected double year_total = 0.;
+
+    protected double Pselect = 0.;
+
 
     public Individual(double[] data) {
         init();
         this.data = data;
         r_c = new double[]{
-                Uniform.staticNextDoubleFromTo(3., 4.),
-                Uniform.staticNextDoubleFromTo(3., 4.),
-                Uniform.staticNextDoubleFromTo(3., 4.)
+                Uniform.staticNextDoubleFromTo(2.9, 4.),
+                Uniform.staticNextDoubleFromTo(2.9, 4.),
+                Uniform.staticNextDoubleFromTo(2.9, 4.)
         };
     }
 
@@ -45,12 +46,6 @@ public class Individual {
         cash = 300.0;
         sum = cash;
         shares = 0;
-        hist_c = new ArrayList<>(3);
-        for(int i = 0; i < 3;i++){
-            hist_c.add(new DoubleArrayList());
-        }
-        hist_shares = new IntArrayList();
-        hist_cash = new DoubleArrayList();
         num_hold = 0;
         num_buy = 0;
         num_sell = 0;
@@ -58,18 +53,16 @@ public class Individual {
 
     public void initialHeat() {
         for (int i = 0; i < 20; i++) {
-            c = Arrays.copyOf(Functions.computeYorke(this.c, this.r_c, this.hist_c), 3);
+            c =Functions.computeYorke(this.c, this.r_c);
         }
     }
 
     public void simulate() {
         for (int i = 0; i < data.length; i++) {
             double price = data[i];
-            hist_shares.add(shares);
-            hist_cash.add(cash + price * shares);
 
             //vypocitaj growth factor
-            c = Arrays.copyOf(Functions.computeYorke(this.c, this.r_c, this.hist_c), 3);
+            c = Functions.computeYorke(this.c, this.r_c);
 
             // kazdy mesiac (30dni) investujeme 300
             if (i % 30 == 0) {
@@ -98,8 +91,8 @@ public class Individual {
             // buy akcia
             if (this.c[1] > choice) {
                 this.num_buy += 1;
-                int num_shares = (int) Math.round(this.cash / price);
-                this.cash -= price * num_shares;
+                int num_shares = (int) Math.round((this.cash-TRANSACTION_COST) / price);
+                this.cash = this.cash - (price * num_shares)-TRANSACTION_COST;
                 this.shares += num_shares;
                 action_performed = true;
             }
@@ -107,7 +100,7 @@ public class Individual {
             // sell akcia
             if (this.c[2] > choice) {
                 this.num_sell += 1;
-                this.cash += price * this.shares;
+                this.cash += (price * this.shares)-TRANSACTION_COST;
                 this.shares = 0;
                 action_performed = true;
             }
@@ -144,9 +137,6 @@ public class Individual {
         individual.cash = this.cash;
         individual.sum = this.sum;
         individual.shares = this.shares;
-        individual.hist_c = new ArrayList<>(this.hist_c);
-        individual.hist_shares = new IntArrayList(this.hist_shares.elements());
-        individual.hist_cash = new DoubleArrayList(this.hist_cash.elements());
         individual.num_hold = this.num_hold;
         individual.num_buy = this.num_buy;
         individual.num_sell = this.num_sell;
@@ -155,16 +145,16 @@ public class Individual {
     }
 
     public void print() {
-         System.out.println( "total investment: " + this.sum);
+         System.out.println( "fitness investment: " + this.sum);
          System.out.println( "r_hold: " + this.r_c[0]);
          System.out.println( "r_buy: " + this.r_c[1]);
          System.out.println( "r_sell: " + this.r_c[2]);
          System.out.println( "num of shares: " + this.shares);
          System.out.println( "available cash: " + this.cash);
-         System.out.println( "total: " + this.total());
+         System.out.println( "fitness: " + this.total());
     }
 
-    public double invested(){
+    public double invested() {
         return this.sum;
     }
 
@@ -174,5 +164,13 @@ public class Individual {
 
     public double geometricMeanOfReturns(){
         return Return.geometricMean(Arrays.copyOfRange(returns.elements(),0,returns.size()));
+    }
+
+    public double getPselect() {
+        return Pselect;
+    }
+
+    public void setPselect(double pselect) {
+        Pselect = pselect;
     }
 }

@@ -44,19 +44,17 @@ public class QuantumNode {
 
     public void computeWeights(){
         for(int i = 0;i < w.length;i++){
+
             double phi = Uniform.staticNextDoubleFromTo(.0,1.);
+
             double p = phi*Pw[i]+(1-phi)*Gw[i];
+
             double u = Uniform.staticNextDoubleFromTo(0.,1.);
+
             if(Uniform.staticNextDoubleFromTo(0.,1.) < 0.5){
-
-//                w[i] = p+alpha*Math.abs(w[i]-p)*Math.log(1/u);
                 w[i] = p+alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
-
             }else{
-
-//                w[i] = p-alpha*Math.abs(w[i]-p)*Math.log(1/u);
                 w[i] = p-alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
-
             }
 
         }

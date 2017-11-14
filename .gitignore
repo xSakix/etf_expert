@@ -4,6 +4,7 @@
 */.settings
 */.classpath
 */.project
+*/target
 *.xlsx
 *.exe
 *.bin
@@ -16,5 +17,7 @@
 out.txt
 nets
 neuroph
+SPY_log.txt
+
 
 

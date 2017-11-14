@@ -6,7 +6,7 @@ import org.xSakix.tools.Errors;
 
 import java.util.Arrays;
 
-public class QauntumParticle {
+public class QuantumParticle {
 
     private double w[];
     private double Pw[];
@@ -18,11 +18,11 @@ public class QauntumParticle {
     private double rms;
     private double alpha;
 
-    public QauntumParticle(int m) {
+    public QuantumParticle(int m) {
         init(m,-5.,5.);
     }
 
-    public QauntumParticle(int m, double min, double max) {
+    public QuantumParticle(int m, double min, double max) {
         init(m, min, max);
     }
 
@@ -49,13 +49,8 @@ public class QauntumParticle {
             double p = phi*Pw[i]+(1-phi)*Gw[i];
             double u = Uniform.staticNextDoubleFromTo(0.,1.);
             if(Uniform.staticNextDoubleFromTo(0.,1.) < 0.5){
-
-//                w[i] = p+alpha*Math.abs(w[i]-p)*Math.log(1/u);
                 w[i] = p+alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
-
             }else{
-
-//                w[i] = p-alpha*Math.abs(w[i]-p)*Math.log(1/u);
                 w[i] = p-alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
 
             }

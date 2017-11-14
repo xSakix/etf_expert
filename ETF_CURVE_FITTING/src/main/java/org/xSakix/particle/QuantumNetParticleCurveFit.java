@@ -14,12 +14,13 @@ import java.util.*;
 public class QuantumNetParticleCurveFit {
 
     public static final int FRAME = 20;
-    public static final int POP_SIZE = 100;
-    public static final int ITER_MAX = 200;
-    public static final int M = 3;
-    private static final double FIT_TOL = 0.001;
+    public static final int POP_SIZE = 10000;
+    public static final int ITER_MAX = 1000000;
+    public static final int M = 4;
+    private static final double FIT_TOL = 0.000001;
     private static final double ERROR_TOL = 0.1;
-    private static final double ALPHA = Uniform.staticNextDoubleFromTo(0.1,1.2);
+    //private static final double ALPHA = Uniform.staticNextDoubleFromTo(0.1,1.2);
+    private static final double ALPHA = 0.75;
 
     private static double[] adjustData(double[] data, double max) {
         double dataTemp[] = new double[data.length];
@@ -36,9 +37,10 @@ public class QuantumNetParticleCurveFit {
         System.out.println("Alpha= "+ALPHA);
 
         double orig_data[] = EtfReader.readEtf("c:\\downloaded_data\\USD\\SPY.csv");
-        //data adjustment, find max and normalize data on max
-        double max = Arrays.stream(orig_data).max().getAsDouble();
-        double data[] = adjustData(orig_data,max);
+        //data adjustment, find norm and normalize data on norm
+        //double norm = Arrays.stream(orig_data).max().getAsDouble();
+        double norm = 10000.;
+        double data[] = adjustData(orig_data,norm);
 
         List<double[]> xx = new ArrayList<>();
         DoubleArrayList tt = new DoubleArrayList();
@@ -52,10 +54,11 @@ public class QuantumNetParticleCurveFit {
         }
         double t[] = Arrays.copyOf(tt.elements(),tt.size());
         double x[][] =  xx.toArray(new double[][]{});
+        int hidden[] = new int[]{9};
 
         List<QuantumNetParticle> particles = new ArrayList<>(POP_SIZE);
         for(int i = 0; i < POP_SIZE;i++){
-            particles.add(new QuantumNetParticle(ALPHA,M,M*2+1,(M*2+1)*2+1));
+            particles.add(new QuantumNetParticle(ALPHA,M,hidden));
         }
 
         DoubleArrayList fitnessHistory = new DoubleArrayList(ITER_MAX);
@@ -64,20 +67,19 @@ public class QuantumNetParticleCurveFit {
 
         QuantumNetParticle best = null;
 
-
         while (true) {
             if (endCondition(iterations,best,fitnessHistory)) {
                 break;
             }
 
-            QuantumNet sumNet = new QuantumNet(ALPHA,M,1,M*2+1,(M*2+1)*2+1);
+            QuantumNet sumNet = new QuantumNet(ALPHA,M,1,hidden);
             particles.stream().forEach(p -> sumNet.addToC(p.getNet()));
             sumNet.divCByParticlesSize(particles.size());
 
             particles.parallelStream().forEach(p -> {
                 p.setC(sumNet);
                 p.computeWeights();
-                p.computeFitness(x,t,max);
+                p.computeFitness(x,t,norm);
             });
 
             Collections.sort(particles, new Comparator<QuantumNetParticle>() {
@@ -97,7 +99,7 @@ public class QuantumNetParticleCurveFit {
                 }
             }
             System.out.println(String.format("Iteration = %d", iterations));
-            System.out.println(String.format("Best fit weights = %s", best.getGw().toString()));
+            System.out.println(String.format("Best     = %s", best.getGw().toString()));
             System.out.println(String.format("Best fitness = %f", best.getFitness()));
             System.out.println(String.format("Actual fitness = %f", particles.get(0).getFitness()));
             System.out.println(String.format("Best RMS = %f", best.getRms()));
@@ -130,7 +132,7 @@ public class QuantumNetParticleCurveFit {
         double y[] = new double[data.length-M];
         double yy[] = new double[data.length-M];
         for (int i = data.length-FRAME; i < data.length-M; i++) {
-            y[i] = best.evaluate(x[i])*max;
+            y[i] = best.evaluate(x[i])*norm;
             yy[i] = t[i];
             double error = Math.abs( yy[i]-y[i]);
             System.out.println(String.format("error = %.3f-%.3f = %.3f", yy[i],y[i], error));
@@ -156,10 +158,10 @@ public class QuantumNetParticleCurveFit {
     }
 
     private static boolean endCondition(int iterations, QuantumNetParticle best, DoubleArrayList fitnessHistory) {
-        int size = fitnessHistory.size();
-        return (best!=null && best.getFitness() < ERROR_TOL) ||
-                //iterations > ITER_MAX ||
-                (size > 10 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-10)) < FIT_TOL);
+        //int size = fitnessHistory.size();
+        return /*(best!=null && best.getFitness() < ERROR_TOL) ||*/
+                iterations > ITER_MAX; //||
+                //(size > 100 && Math.abs(fitnessHistory.get(size-1) - fitnessHistory.get(size-100)) < FIT_TOL);
     }
 
 }

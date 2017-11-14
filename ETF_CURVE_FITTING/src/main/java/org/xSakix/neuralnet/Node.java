@@ -8,19 +8,29 @@ public class Node {
     int inputs;
     double w[];
     double out;
-    double alpha;
-    private double dx;
+    double alpha;// = Uniform.staticNextDoubleFromTo(0.1,0.5);
+    double momentum;// = Uniform.staticNextDoubleFromTo(0.,0.5);
+    private double dx = Double.NaN;
+    private double[] dwLast;
     private double[] dw;
 
-    public Node(int inputs,double alpha) {
+    public Node(int inputs,double alpha, double momentum) {
         this.inputs = inputs;
         w = new double[inputs];
         dw = new double[inputs];
+        dwLast = new double[inputs];
         for(int i = 0; i < inputs;i++){
             w[i]= Uniform.staticNextDoubleFromTo(-5.,5.);
         }
         this.alpha = alpha;
 
+    }
+
+    public void initWeights(double min, double max){
+        for(int i = 0; i < inputs;i++){
+            //w[i]= 0.5*(min+max);
+            w[i] = Uniform.staticNextDoubleFromTo(-max,max);
+        }
     }
 
     private double sigmoid(double x) {
@@ -54,13 +64,14 @@ public class Node {
     }
 
     public void computeDetlaX(double deltaY){
+
         this.dx =out*(1.-out)*deltaY;
     }
 
     public void computeDw(double outPreviousLayer[]){
-
+        this.dwLast = Arrays.copyOf(this.dw,this.dw.length);
         for(int i = 0;i < inputs;i++){
-            this.dw[i] = alpha*dx*outPreviousLayer[i];
+            this.dw[i] = alpha*dx*outPreviousLayer[i]+momentum*dwLast[i];
         }
 
     }

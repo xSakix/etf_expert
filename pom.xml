@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>etf_expert</groupId>
+    <artifactId>etf_expert</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <modules>
+        <module>ETF_INVESTOR</module>
+        <module>ETF_CONFIG_PROVIDER</module>
+        <module>ETF_EVOL_DATA_ANALYZER</module>
+        <module>ETF_EVOL_DATA_SERVER</module>
+        <module>ETF_EVOL_MODEL</module>
+        <module>ETF_EVOL_NEURAL_MODEL</module>
+        <module>ETF_EVOLUTION</module>
+        <module>ETF_NAV_APPROX</module>
+        <module>ETF_NAV_APPROX_2</module>
+        <module>ETFDataDatabase</module>
+        <module>ETFDataDownloader</module>
+        <module>ETFDataDownloader/dependency-reduced-pom.xml</module>
+        <module>ETF_CURVE_FITTING</module>
+        <module>ETF_GROWTH</module>
+        <module>FINANCE_TOOLS</module>
+        <module>TOOLS</module>
+    </modules>
+
+</project>

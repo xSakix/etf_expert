@@ -12,6 +12,7 @@ import java.net.URLConnection;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.logging.Level;
@@ -176,6 +177,12 @@ public class YahooETFDataDownload implements IETFDataDownloader {
 		String theString = IOUtils.toString(is);
 
 		List<String> cookies = con.getHeaderFields().get("Set-Cookie");
+		if(cookies == null){
+			cookies = con.getHeaderFields().get("set-cookie");
+		}
+		if(cookies == null){
+			cookies = new ArrayList<>();
+		}
 		for (String string : cookies) {
 			if (string.startsWith("B")) {
 				cookie = string;
