@@ -1,10 +1,12 @@
-package org.xSakix.neuralnet;
+package org.xSakix.nn;
 
 import cern.jet.random.Uniform;
 
 import java.util.Arrays;
 
 public class Node {
+
+    private final WhichFunctionEnum func;
     int inputs;
     double w[];
     double out;
@@ -14,7 +16,7 @@ public class Node {
     private double[] dwLast;
     private double[] dw;
 
-    public Node(int inputs,double alpha, double momentum) {
+    public Node(int inputs,double alpha, double momentum, WhichFunctionEnum func) {
         this.inputs = inputs;
         w = new double[inputs];
         dw = new double[inputs];
@@ -23,6 +25,7 @@ public class Node {
             w[i]= Uniform.staticNextDoubleFromTo(-5.,5.);
         }
         this.alpha = alpha;
+        this.func = func;
 
     }
 
@@ -36,8 +39,29 @@ public class Node {
     private double sigmoid(double x) {
         return 1.0 / (1.0 + Math.exp(-x));
     }
+    private double dsigmoid(double x) {return x*(1.-x);}
 
-   // private double dsigmoid(double x) {return sigmoid(x)*(1.-sigmoid(x));}
+    private double tanh(double x){
+        return Math.tanh(x);
+    }
+
+    //where x = tanh(input)
+    private double dtanh(double x){
+        return 1.-Math.pow(x,2);
+    }
+
+    private double relu(double x){
+        if(x > 0){
+            return x;
+        }
+        return 0.01*x;
+    }
+    private double drelu(double x){
+        if(x > 0){
+            return 1.0;
+        }
+        return 0.01;
+    }
 
     public double compute(double x[]){
         assert x.length == this.inputs;
@@ -45,7 +69,15 @@ public class Node {
         for(int i = 0;i < inputs;i++){
             sum += w[i]*x[i];
         }
-        out = sigmoid(sum);
+
+        if(func == WhichFunctionEnum.SIGMOID) {
+            out = sigmoid(sum);
+        }else if(func == WhichFunctionEnum.TANH){
+            out = tanh(sum);
+        }else if(func == WhichFunctionEnum.RELU){
+            out = relu(sum);
+        }
+
         return out;
     }
 
@@ -65,7 +97,13 @@ public class Node {
 
     public void computeDetlaX(double deltaY){
 
-        this.dx =out*(1.-out)*deltaY;
+        if(func == WhichFunctionEnum.SIGMOID) {
+            this.dx =dsigmoid(out)*deltaY;
+        }else if(func == WhichFunctionEnum.TANH){
+            this.dx = dtanh(out) * deltaY;
+        }else if(func == WhichFunctionEnum.RELU){
+            this.dx = drelu(out) * deltaY;
+        }
     }
 
     public void computeDw(double outPreviousLayer[]){

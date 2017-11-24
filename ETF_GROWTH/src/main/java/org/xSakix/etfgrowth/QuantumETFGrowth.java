@@ -1,14 +1,9 @@
-package org.xSakix.ga;
+package org.xSakix.etfgrowth;
 
-import cern.colt.list.DoubleArrayList;
-import org.math.plot.Plot2DPanel;
-import org.xSakix.etfgrowth.DCAIndividual;
-import org.xSakix.etfgrowth.Individual;
-import org.xSakix.etfgrowth.QuantumIndividual;
+import org.xSakix.individuals.DCAIndividual;
+import org.xSakix.individuals.QuantumIndividual;
 import org.xSakix.etfreader.EtfReader;
 
-import javax.swing.*;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class QuantumETFGrowth {
 
-    public static final int POP_SIZE = 500;
+    public static final int POP_SIZE = 4000;
     public static final int ITER_MAX = 800;
 
 

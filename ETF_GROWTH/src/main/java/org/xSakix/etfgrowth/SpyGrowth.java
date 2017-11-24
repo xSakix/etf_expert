@@ -1,15 +1,12 @@
-package org.xSakix.ga;
+package org.xSakix.etfgrowth;
 
-import org.xSakix.etfgrowth.Individual;
+import org.xSakix.individuals.Individual;
 import org.xSakix.etfreader.EtfReader;
-import org.math.plot.Plot2DPanel;
-import javax.swing.*;
-import java.awt.*;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 
 public class SpyGrowth {
 
@@ -39,11 +36,11 @@ public class SpyGrowth {
         System.out.println(String.format("Time=%f s",(System.currentTimeMillis()-time)/1000.));
 
 //        Plot2DPanel plot = new Plot2DPanel();
-//        plot.addLinePlot("curve_plot", Color.blue,ga.getHist_totals());
+//        plot.addLinePlot("curve_plot", Color.blue,etfgrowth.getHist_totals());
 //        Plot2DPanel plot2 = new Plot2DPanel();
-//        plot2.addLinePlot("curve_plot", Color.red,ga.mut_rate_history);
+//        plot2.addLinePlot("curve_plot", Color.red,etfgrowth.mut_rate_history);
 //        Plot2DPanel plot3 = new Plot2DPanel();
-//        plot3.addLinePlot("curve_plot", Color.black,ga.s_rate_history);
+//        plot3.addLinePlot("curve_plot", Color.black,etfgrowth.s_rate_history);
 //        Dimension dim = new Dimension(800, 600);
 //
 //        JFrame frame = new JFrame("SPY");

@@ -1,21 +1,13 @@
-package org.xSakix.ga;
+package org.xSakix.etfgrowth;
 
-import cern.jet.random.Uniform;
-import cern.jet.stat.Descriptive;
-import org.math.plot.Plot2DPanel;
-import org.xSakix.etfgrowth.DCAIndividual;
-import org.xSakix.etfgrowth.Individual;
+import org.xSakix.individuals.DCAIndividual;
+import org.xSakix.individuals.Individual;
 import org.xSakix.etfreader.EtfReader;
-import org.xSakix.gatools.FloatOperations;
 
-import javax.swing.*;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -144,7 +136,7 @@ public class RandomGrowth {
         /*System.out.println(String.format("Time=%f s",(System.currentTimeMillis()-time)/1000.));
 
         Plot2DPanel plot = new Plot2DPanel();
-        plot.addLinePlot("curve_plot", Color.blue,ga.getHist_totals());
+        plot.addLinePlot("curve_plot", Color.blue,etfgrowth.getHist_totals());
         Dimension dim = new Dimension(800, 600);
 
         JFrame frame = new JFrame("SPY");

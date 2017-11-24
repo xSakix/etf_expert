@@ -2,11 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>etf_expert</artifactId>
+        <groupId>etf_expert</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ETF_CURVE_FITTING</groupId>
-    <artifactId>ETF_CURVE_FITTING</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>NEURAL_NET</artifactId>
     <build>
         <plugins>
             <plugin>
@@ -24,26 +27,6 @@
             <groupId>colt</groupId>
             <artifactId>colt</artifactId>
             <version>1.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>GA_TOOLS</groupId>
-            <artifactId>GA_TOOLS</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>ETF_GROWTH</groupId>
-            <artifactId>ETF_GROWTH</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.yannrichet</groupId>
-            <artifactId>JMathPlot</artifactId>
-            <version>1.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>etf_expert</groupId>
-            <artifactId>NEURAL_NET</artifactId>
-            <version>1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

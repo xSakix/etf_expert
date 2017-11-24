@@ -3,6 +3,9 @@ package org.xSakix.neuralnet;
 import cern.colt.list.DoubleArrayList;
 import org.math.plot.Plot2DPanel;
 import org.xSakix.etfreader.EtfReader;
+import org.xSakix.nn.Net;
+import org.xSakix.nn.NetConfig;
+import org.xSakix.nn.WhichFunctionEnum;
 import org.xSakix.tools.Errors;
 import org.xSakix.tools.data.Normalizer;
 
@@ -15,15 +18,10 @@ import java.util.List;
 
 public class ETFFitter {
 
-    public static final int FRAME = 20;
-    public static final int POP_SIZE = 100;
-    public static final int ITER_MAX = 1000000;
+    public static final int ITER_MAX = 1000;
     public static final int M = 4;
-    private static final double FIT_TOL = 0.001;
-    private static final double ERROR_TOL = 0.1;
-    //    private static final double ALPHA = Uniform.staticNextDoubleFromTo(0.01,0.5);
-    private static final double ALPHA = 0.9;
-    private static final double MOMENTUM = 0.6;
+    private static final double ALPHA = 0.03;
+    private static final double MOMENTUM = 0.9;
 
 
 
@@ -33,26 +31,39 @@ public class ETFFitter {
         double orig_data[] = EtfReader.readEtf("c:\\downloaded_data\\USD\\SPY.csv");
 
         double norm = 1000.;
-        //double norm = Arrays.stream(orig_data).norm().getAsDouble();
         double data[] = Normalizer.normalize(orig_data, norm);
+        double data2[] = Arrays.copyOfRange(data,data.length/2,data.length);
+        data = Arrays.copyOfRange(data,0,data.length/2);
+        //double data[] = Normalizer.normalizeMinMax(orig_data);
 
         List<double[]> xx = new ArrayList<>();
         DoubleArrayList tt = new DoubleArrayList();
         for (int i = 0; i < data.length - M; i++) {
+            double in[] = new double[M];
             double x[] = new double[M];
             for (int j = 0; j < M; j++) {
                 x[j] = data[i + j];
             }
+//            x[0] = in[0];
+//            x[1] = (in[1]-in[0])/in[0];
+//            x[2] = (in[2]-in[0])/in[0];
+//            x[3] = (in[3]-in[0])/in[0];
+            //System.out.println(Arrays.toString(x));
             xx.add(x);
             tt.add(data[i + M]);
         }
         double t[] = Arrays.copyOf(tt.elements(), tt.size());
         double x[][] = xx.toArray(new double[][]{});
 
-        int layer = M * 2 + 1;
+        NetConfig config = new NetConfig();
+        config.alpha = ALPHA;
+        config.momentum = MOMENTUM;
+        config.n_inputs = M;
+        config.n_outputs=1;
+        config.hidenLayers = new int[]{5};
+        config.func = WhichFunctionEnum.RELU;
 
-//        Net net = new Net(ALPHA,MOMENTUM, M, 1, layer,layer*2+1);
-        Net net = new Net(ALPHA, MOMENTUM, M, 1,9);
+        Net net = new Net(config);
         net.initWeights(Arrays.stream(data).min().getAsDouble(), Arrays.stream(data).max().getAsDouble());
         int it = 0;
 
@@ -61,11 +72,9 @@ public class ETFFitter {
         double lse = Double.NaN;
 
         while (true) {
-            //if (/*it > ITER_MAX ||*/ (lse != Double.NaN && lse < 5800)) {
             if(endCondition(it,lseHistory)){
                 break;
             }
-            System.out.println("it = " + it);
             double y_out[] = new double[x.length];
             for (int i = 0; i < x.length; i++) {
                 y_out[i] = net.eval(x[i]);
@@ -75,33 +84,55 @@ public class ETFFitter {
             for (int i = 0; i < x.length; i++) {
                 y_out[i] = net.eval(x[i]);
             }
-            lse = Errors.leastSquareError(Arrays.stream(t).map(val -> val * norm).toArray(), Arrays.stream(y_out).map(val -> val * norm).toArray());
+            lse = Errors.leastSquareError(t,y_out);
             lseHistory.add(lse);
             double rms = Errors.rootMeanSquareError(lse, t.length);
             rmsHistory.add(rms);
-            System.out.println("LSE=" + lse);
-            System.out.println("RMS=" + rms);
-            System.out.println("--------------------");
+            if(it % 100 == 0) {
+                System.out.println("it = " + it);
+                System.out.println("LSE=" + lse);
+                System.out.println("RMS=" + rms);
+                System.out.println("--------------------");
+            }
             it++;
         }
 
-        double y_out[] = new double[x.length];
-        for (int i = 0; i < x.length; i++) {
-            y_out[i] = net.eval(x[i]);
+        double y_out[] = new double[data2.length-M];
+        double y_out2[] = new double[data2.length-M];
+        for (int i = M,j=0; i < data2.length; i++,j++) {
+            double in[] = new double[M];
+            in = Arrays.copyOfRange(data2,i-M,i);
+            y_out[j] = net.eval(in);
+            if(j < M){
+                y_out2[j] = net.eval(in);
+            }else{
+                in = Arrays.copyOfRange(y_out2,j-M,j);
+                y_out2[j] = net.eval(in);
+            }
+            if(i < 10) {
+                System.out.println(String.format("%f,%f,%f", data2[i], y_out[j], y_out2[j]));
+            }
         }
-        lse = Errors.leastSquareError(Arrays.stream(t).map(val -> val * norm).toArray(), Arrays.stream(y_out).map(val -> val * norm).toArray());
+        data2 = Arrays.copyOfRange(data2,1,data2.length);
+        lse = Errors.leastSquareError(Arrays.copyOfRange(data2,M,data.length), y_out);
 
         double rms = Errors.rootMeanSquareError(lse, t.length);
         System.out.println("LSE=" + lse);
         System.out.println("RMS =" + rms);
+        lse = Errors.leastSquareError(Arrays.copyOfRange(data2,M,data.length), y_out2);
+         rms = Errors.rootMeanSquareError(lse, t.length);
+        System.out.println("LSE2=" + lse);
+        System.out.println("RMS2 =" + rms);
         System.out.println(net);
         System.out.println("--------------------");
 
         // create your PlotPanel (you can use it as a JPanel)
         Plot2DPanel plot = new Plot2DPanel();
         // add a line plot to the PlotPanel
-        plot.addLinePlot("spy_plot", Color.blue, data);
+
+        plot.addLinePlot("spy_plot", Color.blue, data2);
         plot.addLinePlot("spy_plot", Color.red, y_out);
+        plot.addLinePlot("spy_plot", Color.black, y_out2);
 
         //
         Plot2DPanel plot2 = new Plot2DPanel();

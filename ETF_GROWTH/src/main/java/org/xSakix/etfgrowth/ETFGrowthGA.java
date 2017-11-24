@@ -1,17 +1,12 @@
-package org.xSakix.ga;
+package org.xSakix.etfgrowth;
 
-import cern.colt.list.DoubleArrayList;
 import cern.jet.random.Uniform;
 import cern.jet.stat.Descriptive;
-import org.xSakix.etfgrowth.DCAIndividual;
-import org.xSakix.etfgrowth.Individual;
-import org.xSakix.etfreader.EtfReader;
+import org.xSakix.individuals.DCAIndividual;
+import org.xSakix.individuals.Individual;
 import org.xSakix.gatools.FloatOperations;
 
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -247,7 +242,7 @@ public class ETFGrowthGA {
     }
 
 //    public static void main(String[] args) throws IOException, CloneNotSupportedException {
-//        ETFGrowthGA ga = new ETFGrowthGA();
+//        ETFGrowthGA etfgrowth = new ETFGrowthGA();
 //
 //        Path dir = Paths.get("c:\\downloaded_data\\USD\\");
 //
@@ -258,7 +253,7 @@ public class ETFGrowthGA {
 //                String ticket = f.getFileName().toString().replace(".csv", "");
 //                double data[] = EtfReader.readEtf("c:\\downloaded_data\\USD\\" + ticket + ".csv");
 //
-//                Individual best_of_all = ga.run(data);
+//                Individual best_of_all = etfgrowth.run(data);
 //
 //                File file = new File(logName);
 //                if (!file.exists()) {

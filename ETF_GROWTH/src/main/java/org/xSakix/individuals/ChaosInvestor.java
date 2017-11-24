@@ -1,4 +1,4 @@
-package org.xSakix.etfgrowth;
+package org.xSakix.individuals;
 
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.functions.Functions;

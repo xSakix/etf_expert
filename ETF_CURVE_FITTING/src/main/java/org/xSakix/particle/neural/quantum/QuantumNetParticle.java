@@ -18,10 +18,12 @@ public class QuantumNetParticle {
         return net.eval(x);
     }
 
+    @SuppressWarnings("Duplicates")
     public double computeFitness(double x[][], double t[], double norm){
         double y[] = new double[t.length];
         for(int i = 0;i < x.length;i++){
-            y[i] = evaluate(x[i])*norm;
+//            y[i] = evaluate(x[i])*norm;
+            y[i] = evaluate(x[i]);
         }
         fitness = Errors.leastSquareError(t,y);
         rms = Errors.rootMeanSquareError(fitness,x.length);

@@ -8,4 +8,10 @@ public class Normalizer {
         return Arrays.stream(data).map(value -> value/norm).toArray();
     }
 
+    public static double[] normalizeMinMax(double[] data) {
+        double min = Arrays.stream(data).min().getAsDouble();
+        double max = Arrays.stream(data).max().getAsDouble();
+        return Arrays.stream(data).map(value -> (value-min)/(max-min)).toArray();
+    }
+
 }

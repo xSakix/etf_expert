@@ -10,11 +10,16 @@ public class Functions {
     public static double[] computeYorke(double c[],double r_c[]){
 
         for(int i = 0; i < 3;i++) {
-            c[i] = c[i] * r_c[i] * (1. - c[i]);
+            c[i] = computeYorke(c[i],r_c[i]);
         }
 
         return c;
     }
+
+    public static double computeYorke(double c,double r_c){
+        return c * r_c * (1. - c);
+    }
+
 
     public static double[] computeYorke(double c[],double r_c[],List<DoubleArrayList> hist_c){
         double c_next[] = new double[3];

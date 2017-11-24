@@ -6,6 +6,7 @@
 
     <groupId>etf_expert</groupId>
     <artifactId>etf_expert</artifactId>
+    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
 
     <modules>
@@ -25,6 +26,8 @@
         <module>ETF_GROWTH</module>
         <module>FINANCE_TOOLS</module>
         <module>TOOLS</module>
+        <module>NEURAL_NET</module>
+        <module>ETF_REBALANCE</module>
     </modules>
 
 </project>

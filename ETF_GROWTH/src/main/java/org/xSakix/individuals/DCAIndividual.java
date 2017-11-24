@@ -1,10 +1,8 @@
-package org.xSakix.etfgrowth;
+package org.xSakix.individuals;
 
 import cern.colt.list.DoubleArrayList;
-import cern.jet.random.Uniform;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.finance.tools.basics.Return;
-import org.xSakix.functions.Functions;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -17,9 +15,12 @@ public class DCAIndividual {
     private double sum = cash;
     private int shares = 0;
     private DoubleArrayList returns = new DoubleArrayList();
+    private DoubleArrayList totals = new DoubleArrayList();
     private double year_total = 0.;
 
     private static final double TRANSACTION_COST = 4.0;
+
+
 
     public DCAIndividual(double[] data) {
         init();
@@ -59,6 +60,7 @@ public class DCAIndividual {
                 this.shares += num_shares;
             }
 
+            totals.add((shares*price+cash));
         }
     }
 
@@ -66,6 +68,9 @@ public class DCAIndividual {
         return cash + data[data.length - 1] * shares;
     }
 
+    public double[] getTotals(){
+        return Arrays.copyOfRange(this.totals.elements(),0,this.totals.size());
+    }
 
     public void print() {
          System.out.println( "fitness investment: " + this.sum);
@@ -91,6 +96,7 @@ public class DCAIndividual {
         String ticket = "SPY";
 
         double data[] = EtfReader.readEtf("c:\\downloaded_data\\USD\\" + ticket + ".csv");
+        data = Arrays.copyOfRange(data,1000,data.length);
         DCAIndividual dca = new DCAIndividual(data);
         dca.simulate();
         dca.print();

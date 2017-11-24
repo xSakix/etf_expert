@@ -1,6 +1,6 @@
-package org.xSakix.ga;
+package org.xSakix.etfgrowth;
 
-import org.xSakix.etfgrowth.Individual;
+import org.xSakix.individuals.Individual;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.finance.tools.basics.Return;
 

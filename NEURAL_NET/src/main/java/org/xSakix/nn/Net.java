@@ -1,43 +1,44 @@
-package org.xSakix.neuralnet;
+package org.xSakix.nn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class Net {
     List<List<Node>> net;
+    boolean reinforced=false;
 
-    Net(double alpha,double momentum, int inputs,int outputs,int ...hidenLayers){
-        net = new ArrayList<>(hidenLayers.length+1);
+    public Net(NetConfig config){
+        net = new ArrayList<>(config.hidenLayers.length+1);
 
-        int in = inputs;
+        int in = config.n_inputs;
+        reinforced = config.reinforced;
 
-        for(int numOfNodes : hidenLayers){
+        for(int numOfNodes : config.hidenLayers){
             List<Node> layer = new ArrayList<>(numOfNodes);
             for(int i = 0; i < numOfNodes;i++){
-                layer.add(new Node(in,alpha,momentum));
+                layer.add(new Node(in,config.alpha,config.momentum,config.func));
             }
             in = numOfNodes;
             net.add(layer);
         }
 
-        List<Node> layer = new ArrayList<>(outputs);
-        for(int i = 0; i < outputs;i++){
-            layer.add(new Node(in,alpha,momentum));
+        List<Node> layer = new ArrayList<>(config.n_outputs);
+        for(int i = 0; i < config.n_outputs;i++){
+            layer.add(new Node(in,config.alpha,config.momentum,config.func));
         }
         net.add(layer);
     }
 
-    public Net(double alpha,double momentum, int inputs,double[] outputs, double[][]...hiddenLayers){
+    public Net(NetConfig config,double[] outputs, double[][] ...hiddenLayers){
         net = new ArrayList<>(hiddenLayers.length+1);
-
-        int in = inputs;
+        reinforced = config.reinforced;
+        int in = config.n_inputs;
 
         for(double[][] wHiddenLayer : hiddenLayers){
             List<Node> layer = new ArrayList<>(wHiddenLayer.length);
             for(int i = 0; i < wHiddenLayer.length;i++){
-                Node node = new Node(in,alpha,momentum);
+                Node node = new Node(in,config.alpha,config.momentum,config.func);
                 node.setW(wHiddenLayer[i]);
                 layer.add(node);
             }
@@ -46,7 +47,7 @@ public class Net {
         }
 
         List<Node> layer = new ArrayList<>(1);
-        Node node = new Node(in,alpha,momentum);
+        Node node = new Node(in,config.alpha,config.momentum,config.func);
         node.setW(outputs);
         layer.add(node);
         net.add(layer);
@@ -69,21 +70,23 @@ public class Net {
 
 
     public void backpropagate(double y,double t, double x[]) {
-
-
         for(int i = net.size()-1; i >= 0;i--){
             double dy = 0.;
             double outPrevious[] = null;
             if(i == 0){
                 outPrevious = x;
             }else {
-                outPrevious = collecPreviousLayerOutput(i);
+                outPrevious = collectPreviousLayerOutput(i);
             }
             for(int j = 0;j < net.get(i).size();j++){
                 Node nodeIJ = net.get(i).get(j);
 
                 if(i == net.size()-1){
-                    dy = nodeIJ.computeOutputsDy(t,y);
+                    if(!reinforced) {
+                        dy = nodeIJ.computeOutputsDy(t, y);
+                    }else {
+                        dy = t;
+                    }
                 }else{
                     double weightsOut[] = new double[net.get(i+1).size()];
                     double dxOut[] = new double[net.get(i+1).size()];
@@ -100,7 +103,7 @@ public class Net {
         }
     }
 
-    public double[] collecPreviousLayerOutput(int layer){
+    public double[] collectPreviousLayerOutput(int layer){
         assert layer > 0;
 
         double output[] = new double[net.get(layer-1).size()];

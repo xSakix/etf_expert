@@ -1,4 +1,4 @@
-package org.xSakix.etfgrowth;
+package org.xSakix.individuals;
 
 import cern.jet.random.Uniform;
 import org.xSakix.finance.tools.basics.Return;

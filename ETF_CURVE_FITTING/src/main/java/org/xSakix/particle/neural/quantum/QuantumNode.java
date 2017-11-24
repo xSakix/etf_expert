@@ -1,5 +1,6 @@
 package org.xSakix.particle.neural.quantum;
 
+import cern.jet.random.Normal;
 import cern.jet.random.Uniform;
 
 import java.util.Arrays;
@@ -20,11 +21,10 @@ public class QuantumNode {
         C= new double[inputs];
 
         for(int i = 0; i < inputs;i++){
-            w[i]= Uniform.staticNextDoubleFromTo(-5.,5.);
+            w[i]= Normal.staticNextDouble(0,1);
             Pw[i]=w[i];
             Gw[i]=w[i];
         }
-        //this.alpha = Uniform.staticNextDoubleFromTo(0.5,1.2);
         this.alpha = alpha;
 
     }
@@ -42,6 +42,7 @@ public class QuantumNode {
         return sigmoid(sum);
     }
 
+    @SuppressWarnings("Duplicates")
     public void computeWeights(){
         for(int i = 0;i < w.length;i++){
 
