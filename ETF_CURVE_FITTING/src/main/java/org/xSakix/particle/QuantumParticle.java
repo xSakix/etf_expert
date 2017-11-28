@@ -52,9 +52,7 @@ public class QuantumParticle {
                 w[i] = p+alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
             }else{
                 w[i] = p-alpha*Math.abs(w[i]-C[i])*Math.log(1/u);
-
             }
-
         }
     }
 

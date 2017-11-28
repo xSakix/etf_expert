@@ -11,20 +11,20 @@ public class DCAIndividual {
 
     private double data[];
 
-    private double cash = 300.0;
+    private double cash = 0;
     private double sum = cash;
     private int shares = 0;
     private DoubleArrayList returns = new DoubleArrayList();
     private DoubleArrayList totals = new DoubleArrayList();
     private double year_total = 0.;
+    private double[] returnsDaily;
 
-    private static final double TRANSACTION_COST = 4.0;
-
-
+    private static final double TRANSACTION_COST = 2.0;
 
     public DCAIndividual(double[] data) {
         init();
         this.data = data;
+        this.returnsDaily = new double[this.data.length];
     }
 
     private void init() {
@@ -60,7 +60,9 @@ public class DCAIndividual {
                 this.shares += num_shares;
             }
 
-            totals.add((shares*price+cash));
+            double total = shares * price + cash;
+            totals.add(total);
+            returnsDaily[i] = (total - sum)/sum;
         }
     }
 
@@ -102,5 +104,9 @@ public class DCAIndividual {
         dca.print();
         System.out.println("avg returns (arithmetic): "+dca.arithmeticMeanOfReturns());
         System.out.println("avg returns (geometric): "+dca.geometricMeanOfReturns());
+    }
+
+    public double[] getReturnsDaily() {
+        return returnsDaily;
     }
 }
