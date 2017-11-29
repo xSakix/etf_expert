@@ -2,6 +2,7 @@ package org.xSakix.rebalance;
 
 import cern.jet.random.Uniform;
 import org.math.plot.Plot2DPanel;
+import org.xSakix.buyandhold.ETFBuyAndHoldSimulator;
 import org.xSakix.etfreader.EtfReader;
 import org.xSakix.individuals.DCAIndividual;
 import org.xSakix.utils.DataLoader;
@@ -21,7 +22,7 @@ public class TestingResults {
 
     public static void main(String[] args) throws IOException {
         //testQPSO_EWP();
-        testEWP(365,"MDY","EWM");
+        testEWP(180,"IBB","MDY");
     }
     private static void testEWP(int maxDays,String ...etfs) throws IOException {
 
@@ -30,6 +31,9 @@ public class TestingResults {
         double[][] in_data = DataLoader.loadData(tikets,maxDays);
         EWPSimulator ewpSimulator = new EWPSimulator(in_data);
         double result = ewpSimulator.evaluate();
+        ETFBuyAndHoldSimulator bah = new ETFBuyAndHoldSimulator(in_data);
+        bah.evaluate();
+
         double sum = Arrays.stream(ewpSimulator.getReturns()).sum();
         double avg = sum/(double)ewpSimulator.getReturns().length;
         DCAIndividual[] dcas = DataLoader.loadDCAForData(tikets,in_data);
@@ -48,6 +52,12 @@ public class TestingResults {
         for(int i = 0; i < dcas.length;i++){
             System.out.println(String.format("DCA(%s) = %f",tikets[i],dcas[i].total()));
         }
+        System.out.println("---B&H---");
+        System.out.println("result = "+bah.computeTotal());
+        ETFBuyAndHoldSimulator finalBah = bah;
+        IntStream.range(0, tikets.length).forEach(j -> System.out.println("Num of shares of " + finalTikets2[j] + "=" + finalBah.getShares()[j]));
+        System.out.println("cash =" + bah.getCash());
+        System.out.println("Returns = "+bah.getReturns()[bah.getReturns().length-1]*100. + " %");
 
         List<double[]> shares_history = ewpSimulator.getShares_history();
         Plot2DPanel plot = new Plot2DPanel();
@@ -62,7 +72,9 @@ public class TestingResults {
 
         Plot2DPanel plot2 = new Plot2DPanel();
         plot2.addLinePlot("value",Color.red,ewpSimulator.getValue());
+        plot2.addLinePlot("B&H value",Color.black,bah.getValue());
         plot2.addLinePlot("invested",Color.blue,ewpSimulator.getInvested());
+        plot2.addLegend("SOUTH");
 
         Plot2DPanel plot3 = new Plot2DPanel();
         String[] finalTikets1 = tikets;
@@ -80,13 +92,19 @@ public class TestingResults {
             plot4.addLinePlot(tikets[i],c,dcas[i].getReturnsDaily());
         }
         plot4.addLinePlot("portfolio",Color.black,ewpSimulator.getReturns());
+        plot4.addLinePlot("B&H portfolio",Color.red,bah.getReturns());
         plot4.addLegend("SOUTH");
+
+        Plot2DPanel plot5 = new Plot2DPanel();
+        plot5.addLinePlot("portfolio",Color.black,ewpSimulator.getAvgReturns());
+        plot5.addLinePlot("B&H portfolio",Color.red,bah.getAvgReturns());
+        plot5.addLegend("SOUTH");
 
 
         Dimension dim = new Dimension(800, 600);
 
         JFrame frame = new JFrame("REBALANCE");
-        frame.setLayout(new GridLayout(2,2));
+        frame.setLayout(new GridLayout(2,3));
         frame.setSize(dim);
         frame.setMaximumSize(dim);
         frame.setMinimumSize(dim);
@@ -94,6 +112,7 @@ public class TestingResults {
         frame.add(plot2);
         frame.add(plot3);
         frame.add(plot4);
+        frame.add(plot5);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }

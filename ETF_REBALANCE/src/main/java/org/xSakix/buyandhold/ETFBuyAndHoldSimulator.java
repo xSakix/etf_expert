@@ -1,9 +1,9 @@
-package org.xSakix.rebalance;
+package org.xSakix.buyandhold;
 
 import cern.jet.random.Uniform;
 import org.math.plot.Plot2DPanel;
 import org.xSakix.individuals.DCAIndividual;
-import org.xSakix.portfolio.QuantumETFPortfolioParticle;
+import org.xSakix.rebalance.EWPSimulator;
 import org.xSakix.utils.DataLoader;
 
 import javax.swing.*;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
-public class EWPSimulator {
+public class ETFBuyAndHoldSimulator {
 
     private double[] pd;
     private int M ;
@@ -27,7 +27,6 @@ public class EWPSimulator {
     private double investment = 0;
     private int[] shares;
     private double tr_cost = 2.;
-    private int rebalances = 0;
     private List<double[]> shares_history;
     private double[] value;
     private double[] invested;
@@ -35,7 +34,7 @@ public class EWPSimulator {
     private double[] avgReturns;
 
 
-    public EWPSimulator(double[][] data) {
+    public ETFBuyAndHoldSimulator(double[][] data) {
         this.data = data;
         M = data.length;
         this.data = Arrays.copyOf(data,data.length);
@@ -57,46 +56,9 @@ public class EWPSimulator {
             investment = cash;
         }
         for(int i=0; i < data[0].length;i++) {
-            //rebalance -zjednodusene, spravime
-            double cc[] = new double[data.length];
-            double diff[] = new double[data.length];
-            double d[] = new double[data.length];
-
-            int finalI = i;
-            IntStream.range(0,data.length).forEach(j->cc[j] =(double) shares[j] * data[j][finalI]);
-
-            double sum = Arrays.stream(cc).sum();
-            sum+=cash;
-            value[i] = sum;
-            double finalSum = sum;
-            IntStream.range(0,data.length).forEach(j->diff[j] = cc[j] / finalSum);
-
-            sum = Arrays.stream(diff).sum();
-            IntStream.range(0,data.length).forEach(j->d[j] = diff[j] - pd[j]);
-
-//            boolean rebalance = (i % 30 == 0);
-            boolean rebalance = false;
-            for(int j = 0; j < data.length;j++){
-                double amount = finalSum - (data.length)*tr_cost;
-                double c1 = pd[j]* amount;
-                double price = data[j][i];
-                int s1 = (int) ((c1 - tr_cost) / price);
-                if( Math.abs(d[j]) > 0. && s1 != shares[j]){
-                    rebalance = true;
-                    break;
-                }
-            }
-            if(rebalance){
-                rebalances++;
-                cash= finalSum - (data.length)*tr_cost;
-                IntStream.range(0,data.length).forEach(j -> shares[j]=0);
-            }
-
-            if(i % 30 == 0  || rebalance){
-                if(i % 30 == 0 ) {
-                    cash += 300.;
-                    investment += 300.;
-                }
+            if(i % 30 == 0 ){
+                cash += 300.;
+                investment += 300.;
                 double amount = cash;
                 for(int j =0;j < data.length;j++) {
                     double c1 = pd[j]* amount;
@@ -110,6 +72,8 @@ public class EWPSimulator {
                 }
             }
 
+            value[i] = computeTotal();
+            int finalI = i;
             IntStream.range(0,shares_history.size()).forEach(j -> shares_history.get(j)[finalI]=shares[j]);
             invested[i] = this.investment;
             returns[i] = (value[i] - this.invested[i])/this.invested[i];
@@ -153,10 +117,6 @@ public class EWPSimulator {
         return shares;
     }
 
-    public int getRebalances() {
-        return rebalances;
-    }
-
     public double[] getReturns() {
         return returns;
     }
@@ -166,14 +126,13 @@ public class EWPSimulator {
     }
 
     @Override
-    public EWPSimulator clone() throws CloneNotSupportedException {
-        EWPSimulator individual = new EWPSimulator(this.data);
+    public ETFBuyAndHoldSimulator clone() throws CloneNotSupportedException {
+        ETFBuyAndHoldSimulator individual = new ETFBuyAndHoldSimulator(this.data);
 
         individual.pd = Arrays.copyOf(pd,pd.length);
         individual.cash = this.cash;
         individual.investment = this.investment;
         individual.shares = Arrays.copyOf(this.shares,this.shares.length);
-        individual.rebalances = this.rebalances;
         individual.returns = Arrays.copyOf(returns,returns.length);
         individual.shares_history = new ArrayList<>(this.shares_history);
         individual.value = Arrays.copyOf(value,value.length);
@@ -183,82 +142,34 @@ public class EWPSimulator {
         return individual;
     }
 
-    private static final int MAX_DAYS = 3650;
+    private static final int MAX_DAYS = 5000;
 
     public static void main(String[] args) throws IOException, CloneNotSupportedException {
-        //String tikets[] = new String[]{"SPY","UUP"};
-//        String tikets[] = new String[]{"SPY","UUP"};
-        //String tikets[] = new String[]{"BND","SUSM-LSE","IFSW-LSE"};
-//        String tikets[] = new String[]{"UUP","SUSM-LSE","IFSW-LSE"};
-//        String tikets[] = new String[]{"TECL","UUP"};
-//
-//        double[][] in_data = DataLoader.loadData(tikets,MAX_DAYS);
-//        DCAIndividual[] dcas = DataLoader.loadDCAForData(tikets,in_data);
-//
-//        EWPSimulator simulator = new EWPSimulator(in_data);
-//        double result = simulator.evaluate();
-//        System.out.println("----RESULTS-----");
-//        System.out.println("DAYS:" + in_data[0].length);
-//        System.out.println("Result="+result);
-//        System.out.println("Investment = " + simulator.getInvestment());
-//        IntStream.range(0, tikets.length).forEach(j -> System.out.println("Num of shares of " + tikets[j] + "=" + simulator.getShares()[j]));
-//        System.out.println("cash =" + simulator.getCash());
-//        System.out.println("Number of rebalances = " + simulator.getRebalances());
-//        System.out.println("Returns = "+((result-simulator.getInvestment())/simulator.getInvestment())*100. + " %");
-//        System.out.println("---DCA---");
-//        for(int i = 0; i < dcas.length;i++){
-//            System.out.println(String.format("DCA(%s) = %f",tikets[i],dcas[i].total()));
-//        }
-        File assetsAllocations = new File(String.valueOf(System.currentTimeMillis())+"_assets_allocations.csv");
-        if(!assetsAllocations.exists()){
-            assetsAllocations.createNewFile();
-            String msg = "ticket1;ticket2;retunrs;avg.returns\n";
-            Files.write(assetsAllocations.toPath(),msg.getBytes("UTF-8"), StandardOpenOption.APPEND);
-        }
+        String tikets[] = new String[]{"MDY","EWM"};
 
-        List<String> all = new CopyOnWriteArrayList<>(DataLoader.findWhichNumOfDataIsMoreOrEqual(MAX_DAYS));
-        System.out.println("FOUND: "+all.size());
-        String tikets[] = new String[2];
-        EWPSimulator  best = null;
-        double[][] in_data = null;
-        DCAIndividual[] dcas = null;
-        for(String etf1 :  all) {
-            String chosen[] = new String[2];
-            chosen[0] = etf1;
-            all.remove(etf1);
-            for(String etf2 : all) {
-                chosen[1] = etf2;
-                System.out.println("Computing for "+Arrays.toString(chosen));
-                double[][] in_data_test = DataLoader.loadData(chosen,MAX_DAYS);
-                EWPSimulator simulator = new EWPSimulator(in_data_test);
-                simulator.evaluate();
-                String msg = String.format("%s;%s;%f;%f\n",chosen[0],chosen[1],simulator.returns[simulator.returns.length-1],simulator.avgReturns[simulator.avgReturns.length-1]);
-                Files.write(assetsAllocations.toPath(),msg.getBytes("UTF-8"), StandardOpenOption.APPEND);
-                if(best == null || best.returns[best.returns.length-1] < simulator.returns[simulator.returns.length-1]){
-                    best  = simulator.clone();
-                    tikets = Arrays.copyOf(chosen,chosen.length);
-                    in_data = Arrays.copyOf(in_data_test,in_data_test.length);
-                    dcas = DataLoader.loadDCAForData(tikets,in_data_test);
-                }
-            }
-        }
+        System.out.println("Computing for "+Arrays.toString(tikets));
+        double[][] in_data = DataLoader.loadData(tikets,MAX_DAYS);
+        ETFBuyAndHoldSimulator simulator = new ETFBuyAndHoldSimulator(in_data);
+        double result = simulator.evaluate();
+        double sum = Arrays.stream(simulator.getReturns()).sum();
+        double avg = sum/(double)simulator.getReturns().length;
+        DCAIndividual[] dcas = DataLoader.loadDCAForData(tikets,in_data);
 
         System.out.println("----RESULTS-----");
         System.out.println("DAYS:" + in_data[0].length);
-        System.out.println("Result="+best.computeTotal());
-        System.out.println("Investment = " + best.getInvestment());
+        System.out.println("Result="+simulator.computeTotal());
+        System.out.println("Investment = " + simulator.getInvestment());
         String[] finalTikets2 = tikets;
-        EWPSimulator finalBest = best;
+        ETFBuyAndHoldSimulator finalBest = simulator;
         IntStream.range(0, tikets.length).forEach(j -> System.out.println("Num of shares of " + finalTikets2[j] + "=" + finalBest.getShares()[j]));
-        System.out.println("cash =" + best.getCash());
-        System.out.println("Number of rebalances = " + best.getRebalances());
-        System.out.println("Returns = "+best.returns[best.returns.length-1]*100. + " %");
+        System.out.println("cash =" + simulator.getCash());
+        System.out.println("Returns = "+simulator.getReturns()[simulator.getReturns().length-1]*100. + " %");
         System.out.println("---DCA---");
         for(int i = 0; i < dcas.length;i++){
             System.out.println(String.format("DCA(%s) = %f",tikets[i],dcas[i].total()));
         }
 
-        List<double[]> shares_history = best.getShares_history();
+        List<double[]> shares_history = simulator.getShares_history();
         Plot2DPanel plot = new Plot2DPanel();
         String[] finalTikets = tikets;
         IntStream.range(0, shares_history.size())
@@ -270,8 +181,8 @@ public class EWPSimulator {
 
 
         Plot2DPanel plot2 = new Plot2DPanel();
-        plot2.addLinePlot("value",Color.red,best.getValue());
-        plot2.addLinePlot("invested",Color.blue,best.getInvested());
+        plot2.addLinePlot("value",Color.red,simulator.getValue());
+        plot2.addLinePlot("invested",Color.blue,simulator.getInvested());
 
         Plot2DPanel plot3 = new Plot2DPanel();
         String[] finalTikets1 = tikets;
@@ -288,12 +199,11 @@ public class EWPSimulator {
             Color c = new Color(Uniform.staticNextIntFromTo(0,255), Uniform.staticNextIntFromTo(0,255), Uniform.staticNextIntFromTo(0,255));
             plot4.addLinePlot(tikets[i],c,dcas[i].getReturnsDaily());
         }
-        plot4.addLinePlot("portfolio",Color.black,best.getReturns());
+        plot4.addLinePlot("portfolio",Color.black,simulator.getReturns());
         plot4.addLegend("SOUTH");
 
-
         Plot2DPanel plot5 = new Plot2DPanel();
-        plot5.addLinePlot("portfolio",Color.black,best.getAvgReturns());
+        plot5.addLinePlot("portfolio",Color.black,simulator.getAvgReturns());
         plot5.addLegend("SOUTH");
 
 
