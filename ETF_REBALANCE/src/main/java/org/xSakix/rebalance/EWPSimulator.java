@@ -42,7 +42,11 @@ public class EWPSimulator {
         this.pd = new double[data.length];
         shares = new int[data.length];
 
-        IntStream.range(0,data.length).forEach(j -> pd[j] = 1./data.length);
+        //IntStream.range(0,data.length).forEach(j -> pd[j] = 1./data.length);
+        pd[0] = 0.6;
+        pd[1]=0.2;
+        pd[2]=0.2;
+
 
         shares_history = new ArrayList<>(data.length);
         IntStream.range(0,data.length).forEach(i -> shares_history.add(new double[data[0].length]));
@@ -81,7 +85,8 @@ public class EWPSimulator {
                 double c1 = pd[j]* amount;
                 double price = data[j][i];
                 int s1 = (int) ((c1 - tr_cost) / price);
-                if( Math.abs(d[j]) > 0. && s1 != shares[j]){
+//                if( Math.abs(d[j]) > 0. && s1 != shares[j]){
+                if( Math.abs(d[j]) > 0. && s1 > shares[j]){
                     rebalance = true;
                     break;
                 }

@@ -22,7 +22,9 @@ public class TestingResults {
 
     public static void main(String[] args) throws IOException {
         //testQPSO_EWP();
-        testEWP(180,"IBB","MDY");
+        //"BND","SUSM-LSE","IFSW-LSE"
+        testEWP(180,"IFSW-LSE","BND","SUSM-LSE");
+        //testEWP(180,"IJT","ILF");
     }
     private static void testEWP(int maxDays,String ...etfs) throws IOException {
 
